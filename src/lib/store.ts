@@ -76,11 +76,8 @@ export function useStore() {
   }
 
   async function updateProgram(id: string, patch: Partial<Program>) {
-    const allowed: Record<string, unknown> = {};
-    for (const k of ["name", "variant", "round", "main_lifts", "supp_lifts", "week", "cycle", "active"]) {
-      if (k in patch) allowed[k] = (patch as Record<string, unknown>)[k];
-    }
-    await supabase.from("programs").update(allowed).eq("id", id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await supabase.from("programs").update(patch as any).eq("id", id);
     await refresh();
   }
 
