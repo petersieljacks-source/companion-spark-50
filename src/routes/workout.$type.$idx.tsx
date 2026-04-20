@@ -59,9 +59,10 @@ function WorkoutPage() {
     for (let i = 0; i < numSets; i++) {
       const r = reps[i] ?? 0;
       if (isMain) {
+        const main = lift as { tm: number; bodyweight: boolean };
         const s = WEEK_SCHEME[currentWeek][i];
-        const totalKg = roundTo(lift!.tm * s.pct, prog!.round);
-        const addedKg = lift!.bodyweight ? Math.max(0, totalKg - bodyweight) : totalKg;
+        const totalKg = roundTo(main.tm * s.pct, prog!.round);
+        const addedKg = main.bodyweight ? Math.max(0, totalKg - bodyweight) : totalKg;
         out.push({ weight: totalKg, addedWeight: addedKg, target: s.reps, reps: r, amrap: typeof s.reps === "string", done: !!done[i] });
       } else {
         const supp = lift as { weight: number; bodyweight: boolean };
