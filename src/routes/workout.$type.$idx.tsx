@@ -45,6 +45,8 @@ function WorkoutPage() {
   if (!prog || !lift) {
     return <AppShell title="Exercise" back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
   }
+  const mainLift = isMain ? (lift as { name: string; bodyweight: boolean; tm: number; addedLoad?: number }) : null;
+  const suppLift = !isMain ? (lift as { name: string; bodyweight: boolean; weight: number }) : null;
 
   function setRep(i: number, v: number) {
     setReps((arr) => arr.map((x, j) => j === i ? v : x));
