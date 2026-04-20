@@ -3,13 +3,13 @@ import { Play, Activity } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS, type Program } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS, DAYS_PER_WEEK, type Program, type WorkoutLog } from "@/lib/531";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
-function buildLift1RMData(prog: Program | null, logs: ReturnType<typeof useStore>["logs"]) {
+function buildLift1RMData(prog: Program | null, logs: WorkoutLog[]) {
   if (!prog) return [];
   return prog.main_lifts.map((l, i) => {
     const liftLogs = logs
@@ -20,6 +20,18 @@ function buildLift1RMData(prog: Program | null, logs: ReturnType<typeof useStore
     const trend = latest && prev ? Number(latest) - Number(prev) : 0;
     return { name: l.name, latest, trend };
   });
+}
+
+// Workout = 1 cell of (week, day). It's "done" if at least one main or supp log exists for that cell.
+function isWorkoutDone(prog: Program, logs: WorkoutLog[], cycle: number, week: number, day: number) {
+  return logs.some(
+    (l) =>
+      l.program_id === prog.id &&
+      l.cycle === cycle &&
+      l.week === week &&
+      l.day === day &&
+      l.type !== "restart",
+  );
 }
 
 function Home() {
@@ -56,24 +68,55 @@ function Home() {
           logs={logs}
           bw={bodyweight}
           onAdvance={async () => {
-            const next = activeProgram.week + 1;
-            if (next >= 4) {
-              const newCycle = activeProgram.cycle + 1;
-              const newMain = activeProgram.main_lifts.map((l) => {
-                if (l.bodyweight) {
-                  const added = (l.addedLoad ?? 0) + 2.5;
-                  return { ...l, addedLoad: added, tm: bodyweight + added };
-                }
-                return { ...l, tm: l.tm + 2.5 };
-              });
-              await updateProgram(activeProgram.id, {
-                week: 0,
-                cycle: newCycle,
-                main_lifts: newMain,
-              });
-            } else {
-              await updateProgram(activeProgram.id, { week: next });
+            // Advance one workout: day 0 -> 1 -> 2, then next week, then next cycle (with TM bumps).
+            const nextDay = activeProgram.day + 1;
+            if (nextDay < DAYS_PER_WEEK) {
+              await updateProgram(activeProgram.id, { day: nextDay });
+              return;
             }
+            const nextWeek = activeProgram.week + 1;
+            if (nextWeek < 4) {
+              await updateProgram(activeProgram.id, { week: nextWeek, day: 0 });
+              return;
+            }
+            // End of cycle — bump TMs and restart.
+            const newCycle = activeProgram.cycle + 1;
+            const newMain = activeProgram.main_lifts.map((l) => {
+              if (l.bodyweight) {
+                const added = (l.addedLoad ?? 0) + 2.5;
+                return { ...l, addedLoad: added, tm: bodyweight + added };
+              }
+              return { ...l, tm: l.tm + 2.5 };
+            });
+            await updateProgram(activeProgram.id, {
+              week: 0,
+              day: 0,
+              cycle: newCycle,
+              main_lifts: newMain,
+            });
+          }}
+          onPrev={async () => {
+            // Step back one workout: day 2 -> 1 -> 0, then prior week, then prior cycle (no TM rollback).
+            const prevDay = activeProgram.day - 1;
+            if (prevDay >= 0) {
+              await updateProgram(activeProgram.id, { day: prevDay });
+              return;
+            }
+            const prevWeek = activeProgram.week - 1;
+            if (prevWeek >= 0) {
+              await updateProgram(activeProgram.id, { week: prevWeek, day: DAYS_PER_WEEK - 1 });
+              return;
+            }
+            if (activeProgram.cycle > 1) {
+              await updateProgram(activeProgram.id, {
+                cycle: activeProgram.cycle - 1,
+                week: 3,
+                day: DAYS_PER_WEEK - 1,
+              });
+            }
+          }}
+          onJumpTo={async (week, day) => {
+            await updateProgram(activeProgram.id, { week, day });
           }}
           onTrain={() => navigate({ to: "/session" })}
         />
@@ -87,24 +130,30 @@ function ActiveHome({
   logs,
   bw,
   onAdvance,
+  onPrev,
+  onJumpTo,
   onTrain,
 }: {
   prog: Program;
-  logs: ReturnType<typeof useStore>["logs"];
+  logs: WorkoutLog[];
   bw: number;
   onAdvance: () => void;
+  onPrev: () => void;
+  onJumpTo: (week: number, day: number) => void;
   onTrain: () => void;
 }) {
   void bw;
   const lifts = buildLift1RMData(prog, logs);
   const showRMs = lifts.some((l) => l.latest);
 
+  const isFirst = prog.cycle === 1 && prog.week === 0 && prog.day === 0;
+
   return (
     <>
       <div className="px-4 pt-8 pb-3 text-center">
         <div className="text-[28px] font-semibold tracking-tight">{prog.name}</div>
         <div className="mt-0.5 text-sm text-muted-foreground">
-          Cycle {prog.cycle} · {WEEK_LABELS[prog.week]}
+          Cycle {prog.cycle} · {WEEK_LABELS[prog.week]} · {DAY_LABELS[prog.day]}
         </div>
       </div>
 
@@ -155,12 +204,101 @@ function ActiveHome({
         </Link>
       </div>
 
-      <button
-        onClick={onAdvance}
-        className="mx-4 mt-3 block w-[calc(100%-2rem)] rounded-xl border border-input bg-card py-3 text-[15px] font-medium"
-      >
-        Advance to next week →
-      </button>
+      <CycleGrid prog={prog} logs={logs} onJumpTo={onJumpTo} />
+
+      <div className="grid grid-cols-2 gap-2.5 px-4 pt-3">
+        <button
+          onClick={onPrev}
+          disabled={isFirst}
+          className="rounded-xl border border-input bg-card py-3 text-[14px] font-medium disabled:opacity-40"
+        >
+          ← Previous
+        </button>
+        <button
+          onClick={onAdvance}
+          className="rounded-xl border border-input bg-card py-3 text-[14px] font-medium"
+        >
+          Next →
+        </button>
+      </div>
+    </>
+  );
+}
+
+function CycleGrid({
+  prog,
+  logs,
+  onJumpTo,
+}: {
+  prog: Program;
+  logs: WorkoutLog[];
+  onJumpTo: (week: number, day: number) => void;
+}) {
+  return (
+    <div className="px-4 pt-4">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+          Cycle {prog.cycle} schedule
+        </div>
+        <div className="text-[11px] text-muted-foreground">3 workouts / week</div>
+      </div>
+      <div className="rounded-xl border border-border bg-card p-2">
+        <div className="grid grid-cols-[64px_repeat(3,1fr)] gap-1.5">
+          <div />
+          {DAY_LABELS.map((d) => (
+            <div key={d} className="text-center text-[11px] text-muted-foreground">{d}</div>
+          ))}
+          {WEEK_LABELS.map((wLabel, w) => (
+            <WeekRow
+              key={w}
+              prog={prog}
+              logs={logs}
+              week={w}
+              weekLabel={wLabel}
+              onJumpTo={onJumpTo}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekRow({
+  prog,
+  logs,
+  week,
+  weekLabel,
+  onJumpTo,
+}: {
+  prog: Program;
+  logs: WorkoutLog[];
+  week: number;
+  weekLabel: string;
+  onJumpTo: (week: number, day: number) => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center text-[12px] text-muted-foreground">{weekLabel}</div>
+      {Array.from({ length: DAYS_PER_WEEK }).map((_, day) => {
+        const done = isWorkoutDone(prog, logs, prog.cycle, week, day);
+        const isCurrent = prog.week === week && prog.day === day;
+        const cls = isCurrent
+          ? "border-info bg-info-bg text-info"
+          : done
+            ? "border-success bg-success-bg text-success"
+            : "border-border bg-background text-muted-foreground";
+        return (
+          <button
+            key={day}
+            onClick={() => onJumpTo(week, day)}
+            className={`flex h-11 items-center justify-center rounded-lg border text-[13px] font-medium ${cls}`}
+            aria-label={`${weekLabel} ${DAY_LABELS[day]}${done ? " completed" : ""}${isCurrent ? " current" : ""}`}
+          >
+            {done ? "✓" : isCurrent ? "●" : "·"}
+          </button>
+        );
+      })}
     </>
   );
 }

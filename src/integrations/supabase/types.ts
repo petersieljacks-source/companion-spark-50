@@ -19,6 +19,7 @@ export type Database = {
           active: boolean
           created_at: string
           cycle: number
+          day: number
           id: string
           main_lifts: Json
           name: string
@@ -33,6 +34,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           cycle?: number
+          day?: number
           id?: string
           main_lifts?: Json
           name: string
@@ -47,6 +49,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           cycle?: number
+          day?: number
           id?: string
           main_lifts?: Json
           name?: string
@@ -83,6 +86,7 @@ export type Database = {
           created_at: string
           cycle: number
           date: string
+          day: number
           e1rm: number | null
           id: string
           lift_id: string
@@ -100,6 +104,7 @@ export type Database = {
           created_at?: string
           cycle?: number
           date?: string
+          day?: number
           e1rm?: number | null
           id?: string
           lift_id: string
@@ -117,6 +122,7 @@ export type Database = {
           created_at?: string
           cycle?: number
           date?: string
+          day?: number
           e1rm?: number | null
           id?: string
           lift_id?: string
