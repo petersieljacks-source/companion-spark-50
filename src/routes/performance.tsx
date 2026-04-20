@@ -82,22 +82,31 @@ function Performance() {
           <div className="p-4 text-[13px] text-muted-foreground">No AMRAP sets logged yet.</div>
         ) : (
           <div>
-            <div className="grid grid-cols-[1fr_60px_60px_70px] border-b border-border text-[11px] text-muted-foreground">
+            <div className="grid grid-cols-[1fr_44px_70px_50px_70px] border-b border-border text-[11px] text-muted-foreground">
               <div className="px-3.5 py-2.5">Date</div>
-              <div className="px-2 py-2.5 text-center">Wk</div>
-              <div className="px-2 py-2.5 text-center">Reps</div>
+              <div className="px-1 py-2.5 text-center">Wk</div>
+              <div className="px-2 py-2.5 text-center">Weight</div>
+              <div className="px-1 py-2.5 text-center">Reps</div>
               <div className="px-2.5 py-2.5 text-right">Est 1RM</div>
             </div>
             {[...lift.amrapLogs].reverse().map((lg) => {
               const a = (lg.sets ?? []).find((s) => s.amrap && s.reps > 0);
               const d = new Date(lg.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+              const weightLabel = a
+                ? (lg.bodyweight
+                    ? `+${(a.addedWeight ?? 0)}`
+                    : `${a.weight}`)
+                : "—";
               return (
-                <div key={lg.id} className="grid grid-cols-[1fr_60px_60px_70px] border-b border-border last:border-0">
+                <div key={lg.id} className="grid grid-cols-[1fr_44px_70px_50px_70px] border-b border-border last:border-0">
                   <div className="px-3.5 py-2.5 text-[13px]">{d}</div>
-                  <div className="px-2 py-2.5 text-center text-[13px] text-muted-foreground">
+                  <div className="px-1 py-2.5 text-center text-[13px] text-muted-foreground">
                     {(WEEK_LABELS[lg.week] || "—").replace("Week ", "W")}
                   </div>
-                  <div className="px-2 py-2.5 text-center text-[13px] font-medium text-warning">{a ? a.reps : "—"}</div>
+                  <div className="px-2 py-2.5 text-center text-[13px] font-medium">
+                    {weightLabel}{a ? " kg" : ""}
+                  </div>
+                  <div className="px-1 py-2.5 text-center text-[13px] font-medium text-warning">{a ? a.reps : "—"}</div>
                   <div className="px-2.5 py-2.5 text-right text-[13px] font-semibold">{lg.e1rm ? `${lg.e1rm} kg` : "—"}</div>
                 </div>
               );
