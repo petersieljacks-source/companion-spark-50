@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { TabBar } from "./TabBar";
 
-export function AppShell({ children, title, back }: { children: ReactNode; title: string; back?: () => void }) {
+export function AppShell({ children, title, back, hideTabBar }: { children: ReactNode; title: string; back?: () => void; hideTabBar?: boolean }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
