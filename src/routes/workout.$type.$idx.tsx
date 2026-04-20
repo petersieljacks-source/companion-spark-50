@@ -359,7 +359,7 @@ function WorkoutPage() {
         >
           ↩ Save & back
         </button>
-        {isLastExercise || !nextPos ? (
+        {shouldShowFinish ? (
           <button
             onClick={finishProgram}
             className="flex-1 rounded-xl bg-success py-3 text-[15px] font-semibold text-primary-foreground"
