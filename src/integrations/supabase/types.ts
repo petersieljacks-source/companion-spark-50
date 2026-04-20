@@ -14,7 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      programs: {
+        Row: {
+          active: boolean
+          created_at: string
+          cycle: number
+          id: string
+          main_lifts: Json
+          name: string
+          round: number
+          supp_lifts: Json
+          updated_at: string
+          user_id: string
+          variant: string
+          week: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cycle?: number
+          id?: string
+          main_lifts?: Json
+          name: string
+          round?: number
+          supp_lifts?: Json
+          updated_at?: string
+          user_id: string
+          variant?: string
+          week?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cycle?: number
+          id?: string
+          main_lifts?: Json
+          name?: string
+          round?: number
+          supp_lifts?: Json
+          updated_at?: string
+          user_id?: string
+          variant?: string
+          week?: number
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          bodyweight: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bodyweight?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bodyweight?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workout_logs: {
+        Row: {
+          bodyweight: boolean
+          created_at: string
+          cycle: number
+          date: string
+          e1rm: number | null
+          id: string
+          lift_id: string
+          lift_name: string
+          note: string | null
+          overload_earned: boolean
+          program_id: string
+          sets: Json
+          type: string
+          user_id: string
+          week: number
+        }
+        Insert: {
+          bodyweight?: boolean
+          created_at?: string
+          cycle?: number
+          date?: string
+          e1rm?: number | null
+          id?: string
+          lift_id: string
+          lift_name: string
+          note?: string | null
+          overload_earned?: boolean
+          program_id: string
+          sets?: Json
+          type: string
+          user_id: string
+          week?: number
+        }
+        Update: {
+          bodyweight?: boolean
+          created_at?: string
+          cycle?: number
+          date?: string
+          e1rm?: number | null
+          id?: string
+          lift_id?: string
+          lift_name?: string
+          note?: string | null
+          overload_earned?: boolean
+          program_id?: string
+          sets?: Json
+          type?: string
+          user_id?: string
+          week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
