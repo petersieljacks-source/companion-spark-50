@@ -28,11 +28,30 @@ function WorkoutPage() {
 
   const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
 
+  // Find existing log for this exercise in current cycle/week to hydrate
+  const existingLog = useMemo(() => {
+    if (!prog) return null;
+    return logs.find(
+      (l) =>
+        l.lift_id === `${type}-${idx}` &&
+        l.program_id === prog.id &&
+        l.cycle === prog.cycle &&
+        (isMain ? l.week === prog.week : true),
+    ) ?? null;
+  }, [logs, prog, type, idx, isMain]);
+
+  const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!prog) return;
+    const key = `${prog.id}-${type}-${idx}-${prog.week}-${prog.cycle}`;
+    if (hydratedKeyRef.current === key) return;
+    hydratedKeyRef.current = key;
     setCurrentWeek(prog.week);
-    // pre-fill targets for non-AMRAP main sets
-    if (isMain) {
+    if (existingLog && Array.isArray(existingLog.sets) && existingLog.sets.length > 0) {
+      const s = existingLog.sets as SetLog[];
+      setReps(s.map((x) => x.reps ?? 0));
+      setDone(s.map((x) => !!x.done));
+    } else if (isMain) {
       const init = WEEK_SCHEME[prog.week].map((s) => (typeof s.reps === "number" ? s.reps : 0));
       setReps(init);
       setDone(init.map(() => false));
@@ -40,7 +59,7 @@ function WorkoutPage() {
       setReps(Array(SUPP_SETS).fill(0));
       setDone(Array(SUPP_SETS).fill(false));
     }
-  }, [prog, isMain, idx]);
+  }, [prog, isMain, idx, type, existingLog]);
 
   if (!prog || !lift) {
     return <AppShell title="Exercise" back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
