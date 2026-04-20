@@ -193,6 +193,7 @@ export function useStore() {
     refresh,
     createProgram,
     updateProgram,
+    editProgram,
     deleteProgram,
     upsertLog,
     insertRestartMarker,
