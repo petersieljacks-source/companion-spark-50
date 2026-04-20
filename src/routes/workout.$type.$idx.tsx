@@ -89,8 +89,13 @@ function WorkoutPage() {
     return null;
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     const sets = collectSets();
+    const anyEntered = sets.some((s) => s.reps > 0 || s.done);
+    if (!anyEntered) {
+      toast.error("Enter reps for at least one set before saving.");
+      return false;
+    }
     let e1rm: number | null = null;
     let overload = false;
     if (isMain) {
@@ -105,19 +110,26 @@ function WorkoutPage() {
         await updateProgram(prog!.id, { supp_lifts: newSupp });
       }
     }
-    await upsertLog({
-      program_id: prog!.id,
-      lift_id: `${type}-${idx}`,
-      lift_name: lift!.name,
-      type: isMain ? "main" : "supp",
-      bodyweight: lift!.bodyweight,
-      week: currentWeek,
-      cycle: prog!.cycle,
-      sets,
-      e1rm,
-      overload_earned: overload,
-      date: new Date().toISOString(),
-    });
+    try {
+      await upsertLog({
+        program_id: prog!.id,
+        lift_id: `${type}-${idx}`,
+        lift_name: lift!.name,
+        type: isMain ? "main" : "supp",
+        bodyweight: lift!.bodyweight,
+        week: currentWeek,
+        cycle: prog!.cycle,
+        sets,
+        e1rm,
+        overload_earned: overload,
+        date: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("Save failed:", e);
+      toast.error(`Save failed: ${(e as Error).message}`);
+      return false;
+    }
+    toast.success("Workout saved");
     if (isMain && e1rm) {
       const prevBest = Math.max(
         0,
@@ -126,17 +138,37 @@ function WorkoutPage() {
       if (e1rm > prevBest) toast.success(`New estimated 1RM: ${e1rm} kg!`);
     }
     if (!isMain && overload) toast.success("All sets at 10 — load increased by 2.5 kg!");
+    return true;
   }
 
+  // Build full ordered list of exercises and find prev/next position
+  function getOrdered() {
+    const all: { type: "main" | "supp"; idx: number }[] = [];
+    prog!.main_lifts.forEach((_, i) => all.push({ type: "main", idx: i }));
+    prog!.supp_lifts.forEach((_, i) => all.push({ type: "supp", idx: i }));
+    return all;
+  }
+  const ordered = getOrdered();
+  const currentPos = ordered.findIndex((p) => p.type === type && p.idx === idx);
+  const prevExercise = currentPos > 0 ? ordered[currentPos - 1] : null;
+  const nextExerciseLinear = currentPos >= 0 && currentPos < ordered.length - 1 ? ordered[currentPos + 1] : null;
+
   async function saveAndBack() {
-    await save();
-    navigate({ to: "/session" });
+    const ok = await save();
+    if (ok) navigate({ to: "/session" });
   }
   async function saveAndNext() {
-    await save();
+    const ok = await save();
+    if (!ok) return;
     const next = findNextPos();
     if (!next) navigate({ to: "/session" });
     else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) } });
+  }
+  function gotoPrev() {
+    if (prevExercise) navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
+  }
+  function gotoNext() {
+    if (nextExerciseLinear) navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) } });
   }
 
   const rmEst = (() => {
@@ -250,21 +282,38 @@ function WorkoutPage() {
         })}
       </Card>
 
+      <div className="flex gap-2.5 px-4 pt-2">
+        <button
+          onClick={gotoPrev}
+          disabled={!prevExercise}
+          className="flex-1 rounded-xl border border-input bg-card py-2.5 text-[14px] font-medium disabled:opacity-40"
+        >
+          ← Previous
+        </button>
+        <button
+          onClick={gotoNext}
+          disabled={!nextExerciseLinear}
+          className="flex-1 rounded-xl border border-input bg-card py-2.5 text-[14px] font-medium disabled:opacity-40"
+        >
+          Next →
+        </button>
+      </div>
+
       <div className="fixed bottom-0 left-0 right-0 z-10 flex gap-2.5 border-t border-border bg-background px-4 pb-4 pt-2.5">
         <button
           onClick={saveAndBack}
           className="flex-1 rounded-xl border border-input bg-card py-3 text-[15px] font-medium"
         >
-          ↩ Back to session
+          ↩ Save & back
         </button>
         <button
           onClick={saveAndNext}
           className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
         >
-          {nextPos ? "Next exercise →" : "Finish session"}
+          {nextPos ? "Save & next →" : "Save & finish"}
         </button>
       </div>
-      <div className="h-14" />
+      <div className="h-20" />
     </AppShell>
   );
 }
