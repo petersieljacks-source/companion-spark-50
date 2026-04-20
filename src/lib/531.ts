@@ -8,6 +8,8 @@ export const WEEK_SCHEME: { pct: number; reps: number | string }[][] = [
 ];
 
 export const WEEK_LABELS = ["Week 1", "Week 2", "Week 3", "Deload"];
+export const DAYS_PER_WEEK = 3;
+export const DAY_LABELS = ["Day 1", "Day 2", "Day 3"];
 export const SUPP_SETS = 3;
 
 export type MainLift = {
@@ -41,6 +43,7 @@ export type Program = {
   main_lifts: MainLift[];
   supp_lifts: SuppLift[];
   week: number;
+  day: number;
   cycle: number;
   active: boolean;
   created_at?: string;
@@ -56,6 +59,7 @@ export type WorkoutLog = {
   type: "main" | "supp" | "restart";
   bodyweight: boolean;
   week: number;
+  day: number;
   cycle: number;
   sets: SetLog[];
   e1rm: number | null;
