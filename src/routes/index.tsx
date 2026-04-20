@@ -30,7 +30,16 @@ function Home() {
 
   return (
     <AppShell title="5/3/1 Training">
-      <div className="flex justify-end px-4 pt-2">
+      <div className="flex justify-end gap-2 px-4 pt-2">
+        {activeProgram && (
+          <Link
+            to="/program/new"
+            search={{ edit: activeProgram.id }}
+            className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium"
+          >
+            Edit program
+          </Link>
+        )}
         <Link
           to="/program/new"
           className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium"

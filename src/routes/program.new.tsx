@@ -1,27 +1,60 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
 import type { MainLift, SuppLift } from "@/lib/531";
 
+const searchSchema = z.object({
+  edit: z.string().optional(),
+});
+
 export const Route = createFileRoute("/program/new")({
   component: NewProgram,
+  validateSearch: searchSchema,
 });
 
 function NewProgram() {
   const navigate = useNavigate();
-  const { createProgram, bodyweight } = useStore();
+  const { edit: editId } = Route.useSearch();
+  const { createProgram, editProgram, programs, bodyweight } = useStore();
+  const editing = editId ? programs.find((p) => p.id === editId) : null;
+  const isEdit = !!editing;
+
   const [name, setName] = useState("");
   const [variant, setVariant] = useState("Classic 5/3/1");
   const [round, setRound] = useState(2.5);
   const [mainLifts, setMainLifts] = useState<MainLift[]>([]);
   const [suppLifts, setSuppLifts] = useState<SuppLift[]>([]);
+  const [originalMainSig, setOriginalMainSig] = useState<string>("");
+  const [hydrated, setHydrated] = useState(false);
   const [newMainName, setNewMainName] = useState("");
   const [newMainBW, setNewMainBW] = useState(false);
   const [newSuppName, setNewSuppName] = useState("");
   const [newSuppBW, setNewSuppBW] = useState(false);
+
+  useEffect(() => {
+    if (hydrated) return;
+    if (editId && editing) {
+      setName(editing.name);
+      setVariant(editing.variant);
+      setRound(Number(editing.round));
+      setMainLifts(editing.main_lifts as MainLift[]);
+      setSuppLifts(editing.supp_lifts as SuppLift[]);
+      setOriginalMainSig(mainSignature(editing.main_lifts as MainLift[]));
+      setHydrated(true);
+    } else if (!editId) {
+      setHydrated(true);
+    }
+  }, [editId, editing, hydrated]);
+
+  function mainSignature(lifts: MainLift[]) {
+    return lifts
+      .map((l) => `${l.name.trim().toLowerCase()}|${l.bodyweight ? 1 : 0}`)
+      .join("›");
+  }
 
   function addMain() {
     const n = newMainName.trim();
@@ -44,19 +77,33 @@ function NewProgram() {
       toast.error("Add at least one lift.");
       return;
     }
-    await createProgram({
-      name: name.trim() || "My Program",
-      variant,
-      round,
-      main_lifts: mainLifts,
-      supp_lifts: suppLifts,
-    });
-    toast.success("Program created");
+    if (isEdit && editing) {
+      const willRestart = mainSignature(mainLifts) !== originalMainSig;
+      await editProgram(editing.id, {
+        name: name.trim() || editing.name,
+        variant,
+        round,
+        main_lifts: mainLifts,
+        supp_lifts: suppLifts,
+      });
+      toast.success(willRestart ? "Program updated — cycle restarted" : "Program updated");
+    } else {
+      await createProgram({
+        name: name.trim() || "My Program",
+        variant,
+        round,
+        main_lifts: mainLifts,
+        supp_lifts: suppLifts,
+      });
+      toast.success("Program created");
+    }
     navigate({ to: "/" });
   }
 
+  const mainChanged = isEdit && hydrated && mainSignature(mainLifts) !== originalMainSig;
+
   return (
-    <AppShell title="New program" back={() => navigate({ to: "/" })}>
+    <AppShell title={isEdit ? "Edit program" : "New program"} hideTabBar back={() => navigate({ to: "/" })}>
       <Card>
         <Field label="Program name">
           <input
@@ -94,6 +141,11 @@ function NewProgram() {
       </Card>
 
       <SectionLabel>Main lifts (5/3/1)</SectionLabel>
+      {mainChanged && (
+        <div className="mx-4 mb-2 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-[12px] text-warning">
+          Main lifts changed — saving will restart the cycle (history is kept).
+        </div>
+      )}
       <Card>
         {mainLifts.length === 0 ? (
           <div className="py-1 text-[13px] text-muted-foreground">Add main lifts below</div>
@@ -202,7 +254,7 @@ function NewProgram() {
         onClick={submit}
         className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
       >
-        Create program
+        {isEdit ? "Save changes" : "Create program"}
       </button>
     </AppShell>
   );
