@@ -230,6 +230,7 @@ function WorkoutPage() {
   })();
 
   const nextPos = findNextPos();
+  const shouldShowFinish = isLastExercise || isLastSupportingExercise || !nextPos;
 
   return (
     <AppShell title={lift.name} back={() => navigate({ to: "/session" })}>
