@@ -180,6 +180,10 @@ function WorkoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reps, done, currentWeek]);
 
+  if (!prog || !lift) {
+    return <AppShell title="Exercise" back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
+  }
+
   // Build full ordered list of exercises and find prev/next position
   function getOrdered() {
     const all: { type: "main" | "supp"; idx: number }[] = [];
