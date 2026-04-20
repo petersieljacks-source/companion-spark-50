@@ -132,7 +132,7 @@ export function useStore() {
 
   async function upsertLog(log: Omit<WorkoutLog, "id" | "user_id">) {
     if (!user) throw new Error("Not signed in");
-    // Remove any existing log for same lift in same week/cycle
+    // Remove any existing log for same lift in same week/day/cycle
     const del = await supabase
       .from("workout_logs")
       .delete()
@@ -140,6 +140,7 @@ export function useStore() {
       .eq("program_id", log.program_id)
       .eq("lift_id", log.lift_id)
       .eq("week", log.week)
+      .eq("day", log.day)
       .eq("cycle", log.cycle);
     if (del.error) throw del.error;
     const ins = await supabase.from("workout_logs").insert({
@@ -150,6 +151,7 @@ export function useStore() {
       type: log.type,
       bodyweight: log.bodyweight,
       week: log.week,
+      day: log.day,
       cycle: log.cycle,
       sets: log.sets as never,
       e1rm: log.e1rm,
@@ -171,6 +173,7 @@ export function useStore() {
       type: "restart",
       bodyweight: false,
       week: 0,
+      day: 0,
       cycle,
       sets: [] as never,
       e1rm: null,
