@@ -355,7 +355,7 @@ function WorkoutPage() {
         >
           ↩ Save & back
         </button>
-        {isLastExercise ? (
+        {isLastExercise || !nextPos ? (
           <button
             onClick={finishProgram}
             className="flex-1 rounded-xl bg-success py-3 text-[15px] font-semibold text-primary-foreground"
@@ -367,7 +367,7 @@ function WorkoutPage() {
             onClick={saveAndNext}
             className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
           >
-            {nextPos ? "Save & next →" : "Save & finish"}
+            Save & next →
           </button>
         )}
       </div>
