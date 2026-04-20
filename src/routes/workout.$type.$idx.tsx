@@ -28,17 +28,19 @@ function WorkoutPage() {
 
   const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
 
-  // Find existing log for this exercise in current cycle/week to hydrate
+  // Find existing log for this exercise in the current cycle/week only.
   const existingLog = useMemo(() => {
     if (!prog) return null;
-    return logs.find(
-      (l) =>
-        l.lift_id === `${type}-${idx}` &&
-        l.program_id === prog.id &&
-        l.cycle === prog.cycle &&
-        (isMain ? l.week === prog.week : true),
-    ) ?? null;
-  }, [logs, prog, type, idx, isMain]);
+    return (
+      [...logs].reverse().find(
+        (l) =>
+          l.lift_id === `${type}-${idx}` &&
+          l.program_id === prog.id &&
+          l.cycle === prog.cycle &&
+          l.week === prog.week,
+      ) ?? null
+    );
+  }, [logs, prog, type, idx]);
 
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -196,6 +198,7 @@ function WorkoutPage() {
   const prevExercise = currentPos > 0 ? ordered[currentPos - 1] : null;
   const nextExerciseLinear = currentPos >= 0 && currentPos < ordered.length - 1 ? ordered[currentPos + 1] : null;
   const isLastExercise = currentPos === ordered.length - 1;
+  const isLastSupportingExercise = !isMain && idx === prog.supp_lifts.length - 1;
 
   async function saveAndBack() {
     const ok = await doSave({ silent: false });
@@ -227,6 +230,7 @@ function WorkoutPage() {
   })();
 
   const nextPos = findNextPos();
+  const shouldShowFinish = isLastExercise || isLastSupportingExercise || !nextPos;
 
   return (
     <AppShell title={lift.name} back={() => navigate({ to: "/session" })}>
@@ -355,7 +359,7 @@ function WorkoutPage() {
         >
           ↩ Save & back
         </button>
-        {isLastExercise || !nextPos ? (
+        {shouldShowFinish ? (
           <button
             onClick={finishProgram}
             className="flex-1 rounded-xl bg-success py-3 text-[15px] font-semibold text-primary-foreground"
