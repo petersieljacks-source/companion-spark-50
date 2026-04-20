@@ -173,21 +173,21 @@ function WorkoutPage() {
             {lift.bodyweight && <LiftBadge kind="bw" />}
           </div>
           <div className="text-right">
-            {isMain ? (
+            {isMain && mainLift ? (
               <>
-                <div className="text-[13px] text-muted-foreground">TM: {lift.tm} kg</div>
+                <div className="text-[13px] text-muted-foreground">TM: {mainLift.tm} kg</div>
                 {rmEst && <div className="text-[13px] text-info">1RM: ~{rmEst} kg</div>}
               </>
-            ) : (
+            ) : suppLift ? (
               <div className="text-[15px] font-medium">
-                {lift.bodyweight ? `+${(lift as { weight: number }).weight}` : (lift as { weight: number }).weight} kg
+                {suppLift.bodyweight ? `+${suppLift.weight}` : suppLift.weight} kg
               </div>
-            )}
+            ) : null}
           </div>
         </div>
-        {lift.bodyweight && isMain && (
+        {mainLift && mainLift.bodyweight && (
           <div className="mb-2.5 text-[12px] text-bw">
-            BW {bodyweight} kg + {lift.addedLoad ?? 0} kg = {lift.tm} kg TM
+            BW {bodyweight} kg + {mainLift.addedLoad ?? 0} kg = {mainLift.tm} kg TM
           </div>
         )}
 
@@ -200,10 +200,12 @@ function WorkoutPage() {
 
         {Array.from({ length: numSets }).map((_, i) => {
           const s = isMain ? WEEK_SCHEME[currentWeek][i] : null;
-          const totalKg = isMain
-            ? roundTo(lift.tm * s!.pct, prog.round)
-            : (lift.bodyweight ? bodyweight + (lift as { weight: number }).weight : (lift as { weight: number }).weight);
-          const addedKg = lift.bodyweight && isMain ? Math.max(0, totalKg - bodyweight) : (isMain ? totalKg : (lift as { weight: number }).weight);
+          const totalKg = isMain && mainLift
+            ? roundTo(mainLift.tm * s!.pct, prog.round)
+            : (suppLift!.bodyweight ? bodyweight + suppLift!.weight : suppLift!.weight);
+          const addedKg = isMain && mainLift
+            ? (mainLift.bodyweight ? Math.max(0, totalKg - bodyweight) : totalKg)
+            : suppLift!.weight;
           const isAmrap = isMain && typeof s!.reps === "string";
           const isCompleted = done[i];
           return (
