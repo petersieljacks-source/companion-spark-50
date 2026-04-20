@@ -282,21 +282,38 @@ function WorkoutPage() {
         })}
       </Card>
 
+      <div className="flex gap-2.5 px-4 pt-2">
+        <button
+          onClick={gotoPrev}
+          disabled={!prevExercise}
+          className="flex-1 rounded-xl border border-input bg-card py-2.5 text-[14px] font-medium disabled:opacity-40"
+        >
+          ← Previous
+        </button>
+        <button
+          onClick={gotoNext}
+          disabled={!nextExerciseLinear}
+          className="flex-1 rounded-xl border border-input bg-card py-2.5 text-[14px] font-medium disabled:opacity-40"
+        >
+          Next →
+        </button>
+      </div>
+
       <div className="fixed bottom-0 left-0 right-0 z-10 flex gap-2.5 border-t border-border bg-background px-4 pb-4 pt-2.5">
         <button
           onClick={saveAndBack}
           className="flex-1 rounded-xl border border-input bg-card py-3 text-[15px] font-medium"
         >
-          ↩ Back to session
+          ↩ Save & back
         </button>
         <button
           onClick={saveAndNext}
           className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
         >
-          {nextPos ? "Next exercise →" : "Finish session"}
+          {nextPos ? "Save & next →" : "Save & finish"}
         </button>
       </div>
-      <div className="h-14" />
+      <div className="h-20" />
     </AppShell>
   );
 }
