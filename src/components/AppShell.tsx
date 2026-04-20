@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { TabBar } from "./TabBar";
 
-export function AppShell({ children, title, back }: { children: ReactNode; title: string; back?: () => void }) {
+export function AppShell({ children, title, back, hideTabBar }: { children: ReactNode; title: string; back?: () => void; hideTabBar?: boolean }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -21,7 +21,7 @@ export function AppShell({ children, title, back }: { children: ReactNode; title
   }
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className={hideTabBar ? "min-h-screen" : "min-h-screen pb-20"}>
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2.5">
         {back && (
           <button onClick={back} className="text-[13px] text-info">
@@ -31,7 +31,7 @@ export function AppShell({ children, title, back }: { children: ReactNode; title
         <h2 className="flex-1 text-base font-semibold tracking-tight">{title}</h2>
       </header>
       {children}
-      <TabBar />
+      {!hideTabBar && <TabBar />}
     </div>
   );
 }

@@ -183,7 +183,7 @@ function WorkoutPage() {
   }, [reps, done, currentWeek]);
 
   if (!prog || !lift) {
-    return <AppShell title="Exercise" back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
+    return <AppShell title="Exercise" hideTabBar back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
   }
 
   // Build full ordered list of exercises and find prev/next position
@@ -233,7 +233,7 @@ function WorkoutPage() {
   const shouldShowFinish = isLastExercise || isLastSupportingExercise || !nextPos;
 
   return (
-    <AppShell title={lift.name} back={() => navigate({ to: "/session" })}>
+    <AppShell title={lift.name} hideTabBar back={() => navigate({ to: "/session" })}>
       {isMain && (
         <div className="flex gap-1.5 px-4 pt-3">
           {WEEK_LABELS.map((l, i) => (
