@@ -354,12 +354,21 @@ function WorkoutPage() {
         >
           ↩ Save & back
         </button>
-        <button
-          onClick={saveAndNext}
-          className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
-        >
-          {nextPos ? "Save & next →" : "Save & finish"}
-        </button>
+        {isLastExercise ? (
+          <button
+            onClick={finishProgram}
+            className="flex-1 rounded-xl bg-success py-3 text-[15px] font-semibold text-primary-foreground"
+          >
+            ✓ Finish workout
+          </button>
+        ) : (
+          <button
+            onClick={saveAndNext}
+            className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
+          >
+            {nextPos ? "Save & next →" : "Save & finish"}
+          </button>
+        )}
       </div>
       <div className="h-20" />
     </AppShell>
