@@ -108,11 +108,12 @@ function WorkoutPage() {
     return null;
   }
 
-  async function save(): Promise<boolean> {
+  // Core save — used by both autosave (silent) and explicit user actions (verbose).
+  async function doSave(opts: { silent: boolean }): Promise<boolean> {
     const sets = collectSets();
     const anyEntered = sets.some((s) => s.reps > 0 || s.done);
     if (!anyEntered) {
-      toast.error("Enter reps for at least one set before saving.");
+      if (!opts.silent) toast.error("Enter reps for at least one set before saving.");
       return false;
     }
     let e1rm: number | null = null;
@@ -122,12 +123,6 @@ function WorkoutPage() {
       if (a) e1rm = estimate1RM(a.weight, a.reps);
     } else {
       overload = sets.length === SUPP_SETS && sets.every((s) => s.reps >= 10);
-      if (overload) {
-        const supp = lift as { weight: number };
-        const newW = roundTo((supp.weight ?? 0) + 2.5, prog!.round);
-        const newSupp = prog!.supp_lifts.map((sl, i) => i === idx ? { ...sl, weight: newW } : sl);
-        await updateProgram(prog!.id, { supp_lifts: newSupp });
-      }
     }
     try {
       await upsertLog({
@@ -145,20 +140,48 @@ function WorkoutPage() {
       });
     } catch (e) {
       console.error("Save failed:", e);
-      toast.error(`Save failed: ${(e as Error).message}`);
+      if (!opts.silent) toast.error(`Save failed: ${(e as Error).message}`);
       return false;
     }
-    toast.success("Workout saved");
-    if (isMain && e1rm) {
-      const prevBest = Math.max(
-        0,
-        ...logs.filter((l) => l.lift_id === `main-${idx}` && l.e1rm).map((l) => Number(l.e1rm))
-      );
-      if (e1rm > prevBest) toast.success(`New estimated 1RM: ${e1rm} kg!`);
+    if (!opts.silent) {
+      toast.success("Workout saved");
+      if (isMain && e1rm) {
+        const prevBest = Math.max(
+          0,
+          ...logs.filter((l) => l.lift_id === `main-${idx}` && l.e1rm).map((l) => Number(l.e1rm))
+        );
+        if (e1rm > prevBest) toast.success(`New estimated 1RM: ${e1rm} kg!`);
+      }
+      // Apply supp overload bump only on explicit save (avoid bumping mid-typing).
+      if (!isMain && overload) {
+        const supp = lift as { weight: number };
+        const newW = roundTo((supp.weight ?? 0) + 2.5, prog!.round);
+        const newSupp = prog!.supp_lifts.map((sl, i) => i === idx ? { ...sl, weight: newW } : sl);
+        await updateProgram(prog!.id, { supp_lifts: newSupp });
+        toast.success("All sets at 10 — load increased by 2.5 kg!");
+      }
     }
-    if (!isMain && overload) toast.success("All sets at 10 — load increased by 2.5 kg!");
     return true;
   }
+
+  // Auto-save: debounce changes to reps/done and save silently.
+  const autosaveTimer = useRef<number | null>(null);
+  const isInitialRender = useRef(true);
+  useEffect(() => {
+    if (!prog) return;
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => {
+      void doSave({ silent: true });
+    }, 800);
+    return () => {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reps, done, currentWeek]);
 
   // Build full ordered list of exercises and find prev/next position
   function getOrdered() {
@@ -171,17 +194,23 @@ function WorkoutPage() {
   const currentPos = ordered.findIndex((p) => p.type === type && p.idx === idx);
   const prevExercise = currentPos > 0 ? ordered[currentPos - 1] : null;
   const nextExerciseLinear = currentPos >= 0 && currentPos < ordered.length - 1 ? ordered[currentPos + 1] : null;
+  const isLastExercise = currentPos === ordered.length - 1;
 
   async function saveAndBack() {
-    const ok = await save();
+    const ok = await doSave({ silent: false });
     if (ok) navigate({ to: "/session" });
   }
   async function saveAndNext() {
-    const ok = await save();
+    const ok = await doSave({ silent: false });
     if (!ok) return;
     const next = findNextPos();
     if (!next) navigate({ to: "/session" });
     else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) } });
+  }
+  async function finishProgram() {
+    const ok = await doSave({ silent: false });
+    if (!ok) return;
+    navigate({ to: "/" });
   }
   function gotoPrev() {
     if (prevExercise) navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
