@@ -183,7 +183,7 @@ function WorkoutPage() {
   }, [reps, done, currentWeek]);
 
   if (!prog || !lift) {
-    return <AppShell title="Exercise" back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
+    return <AppShell title="Exercise" hideTabBar back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
   }
 
   // Build full ordered list of exercises and find prev/next position
