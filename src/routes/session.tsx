@@ -36,26 +36,25 @@ function SessionPage() {
         const done = !!logs.find((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.week === week && lg.cycle === cycle);
         const note = l.bodyweight ? `BW ${bodyweight} kg + ${l.addedLoad ?? 0} kg` : `TM: ${l.tm} kg`;
         const rm = getLatest1RM(i);
-        return (
-          <Link
-            key={i}
-            to="/workout/$type/$idx"
-            params={{ type: "main", idx: String(i) }}
-            disabled={done}
-            className={`block ${done ? "pointer-events-none opacity-50" : ""}`}
-          >
-            <Card>
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-medium">{l.name}</span>
-                  <LiftBadge kind="main" />
-                  {l.bodyweight && <LiftBadge kind="bw" />}
-                  <div className="mt-0.5 text-[13px] text-muted-foreground">{note}</div>
-                  {rm && <div className="mt-0.5 text-[12px] text-info">Est. 1RM: {rm} kg</div>}
-                </div>
-                <span className="text-lg">{done ? "✓" : "→"}</span>
+        const inner = (
+          <Card className={done ? "opacity-50" : ""}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-medium">{l.name}</span>
+                <LiftBadge kind="main" />
+                {l.bodyweight && <LiftBadge kind="bw" />}
+                <div className="mt-0.5 text-[13px] text-muted-foreground">{note}</div>
+                {rm && <div className="mt-0.5 text-[12px] text-info">Est. 1RM: {rm} kg</div>}
               </div>
-            </Card>
+              <span className="text-lg">{done ? "✓" : "→"}</span>
+            </div>
+          </Card>
+        );
+        return done ? (
+          <div key={i}>{inner}</div>
+        ) : (
+          <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} className="block">
+            {inner}
           </Link>
         );
       })}
