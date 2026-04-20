@@ -28,7 +28,7 @@ function WorkoutPage() {
 
   const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
 
-  // Find existing log for this exercise in the current cycle/week only.
+  // Find existing log for this exercise in the current cycle/week/day only.
   const existingLog = useMemo(() => {
     if (!prog) return null;
     return (
@@ -37,7 +37,8 @@ function WorkoutPage() {
           l.lift_id === `${type}-${idx}` &&
           l.program_id === prog.id &&
           l.cycle === prog.cycle &&
-          l.week === prog.week,
+          l.week === prog.week &&
+          l.day === prog.day,
       ) ?? null
     );
   }, [logs, prog, type, idx]);
@@ -45,7 +46,7 @@ function WorkoutPage() {
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!prog) return;
-    const key = `${prog.id}-${type}-${idx}-${prog.week}-${prog.cycle}`;
+    const key = `${prog.id}-${type}-${idx}-${prog.week}-${prog.day}-${prog.cycle}`;
     if (hydratedKeyRef.current === key) return;
     hydratedKeyRef.current = key;
     setCurrentWeek(prog.week);
@@ -101,7 +102,7 @@ function WorkoutPage() {
     for (const s of all) {
       if (s.type === type && s.idx === idx) continue;
       const liftId = `${s.type}-${s.idx}`;
-      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === prog!.week && l.cycle === prog!.cycle);
+      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === prog!.week && l.day === prog!.day && l.cycle === prog!.cycle);
       if (!lg) return s;
     }
     return null;
@@ -131,6 +132,7 @@ function WorkoutPage() {
         type: isMain ? "main" : "supp",
         bodyweight: lift!.bodyweight,
         week: currentWeek,
+        day: prog!.day,
         cycle: prog!.cycle,
         sets,
         e1rm,
