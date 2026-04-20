@@ -81,6 +81,50 @@ export function useStore() {
     await refresh();
   }
 
+  // Edit a program in place. Preserves history (logs).
+  // If the main lifts identity changes (added/removed/renamed/reordered), restart the cycle:
+  //   set week=0, bump cycle, and insert a "restart" marker for clarity.
+  async function editProgram(
+    id: string,
+    p: {
+      name: string;
+      variant: string;
+      round: number;
+      main_lifts: MainLift[];
+      supp_lifts: SuppLift[];
+    },
+  ) {
+    if (!user) return;
+    const existing = state.programs.find((x) => x.id === id);
+    if (!existing) return;
+    const sameMain =
+      existing.main_lifts.length === p.main_lifts.length &&
+      existing.main_lifts.every(
+        (l, i) =>
+          l.name.trim().toLowerCase() === p.main_lifts[i].name.trim().toLowerCase() &&
+          !!l.bodyweight === !!p.main_lifts[i].bodyweight,
+      );
+    const patch: Partial<Program> = {
+      name: p.name,
+      variant: p.variant,
+      round: p.round,
+      main_lifts: p.main_lifts,
+      supp_lifts: p.supp_lifts,
+    };
+    let newCycle = existing.cycle;
+    if (!sameMain) {
+      newCycle = existing.cycle + 1;
+      patch.week = 0;
+      patch.cycle = newCycle;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await supabase.from("programs").update(patch as any).eq("id", id);
+    if (!sameMain) {
+      await insertRestartMarker(id, newCycle, "Main lifts changed — cycle restarted");
+    }
+    await refresh();
+  }
+
   async function deleteProgram(id: string) {
     await supabase.from("programs").delete().eq("id", id);
     await refresh();
