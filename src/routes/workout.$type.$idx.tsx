@@ -1,0 +1,265 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { AppShell } from "@/components/AppShell";
+import { Card, LiftBadge, Empty } from "@/components/ui-bits";
+import { useStore } from "@/lib/store";
+import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog } from "@/lib/531";
+
+export const Route = createFileRoute("/workout/$type/$idx")({
+  component: WorkoutPage,
+});
+
+function WorkoutPage() {
+  const { type, idx: idxStr } = Route.useParams();
+  const idx = parseInt(idxStr, 10);
+  const navigate = useNavigate();
+  const { activeProgram: prog, logs, bodyweight, upsertLog, updateProgram } = useStore();
+  const isMain = type === "main";
+
+  const [currentWeek, setCurrentWeek] = useState(prog?.week ?? 0);
+  const [reps, setReps] = useState<number[]>([]);
+  const [done, setDone] = useState<boolean[]>([]);
+
+  const lift = useMemo(() => {
+    if (!prog) return null;
+    return isMain ? prog.main_lifts[idx] : prog.supp_lifts[idx];
+  }, [prog, isMain, idx]);
+
+  const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
+
+  useEffect(() => {
+    if (!prog) return;
+    setCurrentWeek(prog.week);
+    // pre-fill targets for non-AMRAP main sets
+    if (isMain) {
+      const init = WEEK_SCHEME[prog.week].map((s) => (typeof s.reps === "number" ? s.reps : 0));
+      setReps(init);
+      setDone(init.map(() => false));
+    } else {
+      setReps(Array(SUPP_SETS).fill(0));
+      setDone(Array(SUPP_SETS).fill(false));
+    }
+  }, [prog, isMain, idx]);
+
+  if (!prog || !lift) {
+    return <AppShell title="Exercise" back={() => navigate({ to: "/session" })}><Empty>No program.</Empty></AppShell>;
+  }
+
+  function setRep(i: number, v: number) {
+    setReps((arr) => arr.map((x, j) => j === i ? v : x));
+    setDone((arr) => arr.map((x, j) => j === i ? v > 0 : x));
+  }
+  function toggleDone(i: number) {
+    setDone((arr) => arr.map((x, j) => j === i ? !x : x));
+  }
+
+  function collectSets(): SetLog[] {
+    const out: SetLog[] = [];
+    for (let i = 0; i < numSets; i++) {
+      const r = reps[i] ?? 0;
+      if (isMain) {
+        const s = WEEK_SCHEME[currentWeek][i];
+        const totalKg = roundTo(lift!.tm * s.pct, prog!.round);
+        const addedKg = lift!.bodyweight ? Math.max(0, totalKg - bodyweight) : totalKg;
+        out.push({ weight: totalKg, addedWeight: addedKg, target: s.reps, reps: r, amrap: typeof s.reps === "string", done: !!done[i] });
+      } else {
+        const supp = lift as { weight: number; bodyweight: boolean };
+        const addedKg = supp.weight ?? 0;
+        const totalKg = supp.bodyweight ? bodyweight + addedKg : addedKg;
+        out.push({ weight: totalKg, addedWeight: addedKg, reps: r, done: !!done[i] });
+      }
+    }
+    return out;
+  }
+
+  function findNextPos() {
+    const all: { type: "main" | "supp"; idx: number }[] = [];
+    prog!.main_lifts.forEach((_, i) => all.push({ type: "main", idx: i }));
+    prog!.supp_lifts.forEach((_, i) => all.push({ type: "supp", idx: i }));
+    for (const s of all) {
+      if (s.type === type && s.idx === idx) continue;
+      const liftId = `${s.type}-${s.idx}`;
+      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === prog!.week && l.cycle === prog!.cycle);
+      if (!lg) return s;
+    }
+    return null;
+  }
+
+  async function save() {
+    const sets = collectSets();
+    let e1rm: number | null = null;
+    let overload = false;
+    if (isMain) {
+      const a = sets.find((s) => s.amrap && s.reps > 0);
+      if (a) e1rm = estimate1RM(a.weight, a.reps);
+    } else {
+      overload = sets.length === SUPP_SETS && sets.every((s) => s.reps >= 10);
+      if (overload) {
+        const supp = lift as { weight: number };
+        const newW = roundTo((supp.weight ?? 0) + 2.5, prog!.round);
+        const newSupp = prog!.supp_lifts.map((sl, i) => i === idx ? { ...sl, weight: newW } : sl);
+        await updateProgram(prog!.id, { supp_lifts: newSupp });
+      }
+    }
+    await upsertLog({
+      program_id: prog!.id,
+      lift_id: `${type}-${idx}`,
+      lift_name: lift!.name,
+      type: isMain ? "main" : "supp",
+      bodyweight: lift!.bodyweight,
+      week: currentWeek,
+      cycle: prog!.cycle,
+      sets,
+      e1rm,
+      overload_earned: overload,
+      date: new Date().toISOString(),
+    });
+    if (isMain && e1rm) {
+      const prevBest = Math.max(
+        0,
+        ...logs.filter((l) => l.lift_id === `main-${idx}` && l.e1rm).map((l) => Number(l.e1rm))
+      );
+      if (e1rm > prevBest) toast.success(`New estimated 1RM: ${e1rm} kg!`);
+    }
+    if (!isMain && overload) toast.success("All sets at 10 — load increased by 2.5 kg!");
+  }
+
+  async function saveAndBack() {
+    await save();
+    navigate({ to: "/session" });
+  }
+  async function saveAndNext() {
+    await save();
+    const next = findNextPos();
+    if (!next) navigate({ to: "/session" });
+    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) } });
+  }
+
+  const rmEst = (() => {
+    if (!isMain) return null;
+    const log = [...logs].reverse().find((l) => l.lift_id === `main-${idx}` && l.program_id === prog.id && l.e1rm);
+    return log ? Number(log.e1rm) : null;
+  })();
+
+  const nextPos = findNextPos();
+
+  return (
+    <AppShell title={lift.name} back={() => navigate({ to: "/session" })}>
+      {isMain && (
+        <div className="flex gap-1.5 px-4 pt-3">
+          {WEEK_LABELS.map((l, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentWeek(i)}
+              className={`flex-1 rounded-lg border border-border px-2 py-2 text-[13px] ${
+                i === currentWeek ? "border-foreground bg-primary font-semibold text-primary-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Card>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="font-medium">
+            {lift.name}
+            {isMain ? <LiftBadge kind="main" /> : <LiftBadge kind="supp" />}
+            {lift.bodyweight && <LiftBadge kind="bw" />}
+          </div>
+          <div className="text-right">
+            {isMain ? (
+              <>
+                <div className="text-[13px] text-muted-foreground">TM: {lift.tm} kg</div>
+                {rmEst && <div className="text-[13px] text-info">1RM: ~{rmEst} kg</div>}
+              </>
+            ) : (
+              <div className="text-[15px] font-medium">
+                {lift.bodyweight ? `+${(lift as { weight: number }).weight}` : (lift as { weight: number }).weight} kg
+              </div>
+            )}
+          </div>
+        </div>
+        {lift.bodyweight && isMain && (
+          <div className="mb-2.5 text-[12px] text-bw">
+            BW {bodyweight} kg + {lift.addedLoad ?? 0} kg = {lift.tm} kg TM
+          </div>
+        )}
+
+        <div className="grid grid-cols-[52px_1fr_1fr_36px] items-center gap-1.5 border-b border-border py-2 text-[12px] text-muted-foreground">
+          <div>Set</div>
+          <div className="text-center">Weight</div>
+          <div className="text-center">Reps done</div>
+          <div />
+        </div>
+
+        {Array.from({ length: numSets }).map((_, i) => {
+          const s = isMain ? WEEK_SCHEME[currentWeek][i] : null;
+          const totalKg = isMain
+            ? roundTo(lift.tm * s!.pct, prog.round)
+            : (lift.bodyweight ? bodyweight + (lift as { weight: number }).weight : (lift as { weight: number }).weight);
+          const addedKg = lift.bodyweight && isMain ? Math.max(0, totalKg - bodyweight) : (isMain ? totalKg : (lift as { weight: number }).weight);
+          const isAmrap = isMain && typeof s!.reps === "string";
+          const isCompleted = done[i];
+          return (
+            <div key={i} className="grid grid-cols-[52px_1fr_1fr_36px] items-center gap-1.5 border-b border-border py-2 last:border-0">
+              <div>
+                <div className="text-[13px] font-medium">Set {i + 1}</div>
+                {isMain && <div className="text-center text-[12px] text-muted-foreground">{Math.round(s!.pct * 100)}%</div>}
+              </div>
+              <div className="text-center">
+                <div className="text-[15px] font-medium">
+                  {lift.bodyweight ? `+${addedKg.toFixed(1)}` : totalKg.toFixed(1)} kg
+                </div>
+                <div className="text-[12px] text-muted-foreground">
+                  {isMain
+                    ? (lift.bodyweight ? `Total: ${totalKg.toFixed(1)} kg` : (isAmrap ? "AMRAP" : `${s!.reps} reps`))
+                    : (lift.bodyweight ? `Total: ${totalKg} kg` : "8–10 reps")}
+                </div>
+                {isAmrap && <div className="text-[11px] font-semibold text-warning">go for max</div>}
+              </div>
+              <div>
+                <input
+                  type="number"
+                  min={0}
+                  value={reps[i] ?? 0}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => setRep(i, parseInt(e.target.value) || 0)}
+                  className={`w-full rounded-lg border bg-input-bg px-2 py-1.5 text-center text-sm ${
+                    isCompleted ? "border-success bg-success-bg" : "border-input"
+                  }`}
+                />
+              </div>
+              <button
+                onClick={() => toggleDone(i)}
+                className={`flex h-7 w-7 items-center justify-center rounded-full border text-[13px] ${
+                  isCompleted ? "border-success bg-success-bg text-success" : "border-input text-muted-foreground"
+                }`}
+              >
+                ✓
+              </button>
+            </div>
+          );
+        })}
+      </Card>
+
+      <div className="fixed bottom-0 left-0 right-0 z-10 flex gap-2.5 border-t border-border bg-background px-4 pb-4 pt-2.5">
+        <button
+          onClick={saveAndBack}
+          className="flex-1 rounded-xl border border-input bg-card py-3 text-[15px] font-medium"
+        >
+          ↩ Back to session
+        </button>
+        <button
+          onClick={saveAndNext}
+          className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-semibold text-primary-foreground"
+        >
+          {nextPos ? "Next exercise →" : "Finish session"}
+        </button>
+      </div>
+      <div className="h-14" />
+    </AppShell>
+  );
+}
