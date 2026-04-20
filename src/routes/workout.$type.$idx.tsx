@@ -89,8 +89,13 @@ function WorkoutPage() {
     return null;
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     const sets = collectSets();
+    const anyEntered = sets.some((s) => s.reps > 0 || s.done);
+    if (!anyEntered) {
+      toast.error("Enter reps for at least one set before saving.");
+      return false;
+    }
     let e1rm: number | null = null;
     let overload = false;
     if (isMain) {
@@ -105,19 +110,26 @@ function WorkoutPage() {
         await updateProgram(prog!.id, { supp_lifts: newSupp });
       }
     }
-    await upsertLog({
-      program_id: prog!.id,
-      lift_id: `${type}-${idx}`,
-      lift_name: lift!.name,
-      type: isMain ? "main" : "supp",
-      bodyweight: lift!.bodyweight,
-      week: currentWeek,
-      cycle: prog!.cycle,
-      sets,
-      e1rm,
-      overload_earned: overload,
-      date: new Date().toISOString(),
-    });
+    try {
+      await upsertLog({
+        program_id: prog!.id,
+        lift_id: `${type}-${idx}`,
+        lift_name: lift!.name,
+        type: isMain ? "main" : "supp",
+        bodyweight: lift!.bodyweight,
+        week: currentWeek,
+        cycle: prog!.cycle,
+        sets,
+        e1rm,
+        overload_earned: overload,
+        date: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("Save failed:", e);
+      toast.error(`Save failed: ${(e as Error).message}`);
+      return false;
+    }
+    toast.success("Workout saved");
     if (isMain && e1rm) {
       const prevBest = Math.max(
         0,
@@ -126,17 +138,37 @@ function WorkoutPage() {
       if (e1rm > prevBest) toast.success(`New estimated 1RM: ${e1rm} kg!`);
     }
     if (!isMain && overload) toast.success("All sets at 10 — load increased by 2.5 kg!");
+    return true;
   }
 
+  // Build full ordered list of exercises and find prev/next position
+  function getOrdered() {
+    const all: { type: "main" | "supp"; idx: number }[] = [];
+    prog!.main_lifts.forEach((_, i) => all.push({ type: "main", idx: i }));
+    prog!.supp_lifts.forEach((_, i) => all.push({ type: "supp", idx: i }));
+    return all;
+  }
+  const ordered = getOrdered();
+  const currentPos = ordered.findIndex((p) => p.type === type && p.idx === idx);
+  const prevExercise = currentPos > 0 ? ordered[currentPos - 1] : null;
+  const nextExerciseLinear = currentPos >= 0 && currentPos < ordered.length - 1 ? ordered[currentPos + 1] : null;
+
   async function saveAndBack() {
-    await save();
-    navigate({ to: "/session" });
+    const ok = await save();
+    if (ok) navigate({ to: "/session" });
   }
   async function saveAndNext() {
-    await save();
+    const ok = await save();
+    if (!ok) return;
     const next = findNextPos();
     if (!next) navigate({ to: "/session" });
     else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) } });
+  }
+  function gotoPrev() {
+    if (prevExercise) navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
+  }
+  function gotoNext() {
+    if (nextExerciseLinear) navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) } });
   }
 
   const rmEst = (() => {
