@@ -375,7 +375,7 @@ function WorkoutPage() {
           </button>
         )}
       </div>
-      <div className="h-20" />
+      <div className="h-20 text-lg" />
     </AppShell>
   );
 }
