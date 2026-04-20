@@ -28,17 +28,19 @@ function WorkoutPage() {
 
   const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
 
-  // Find existing log for this exercise in current cycle/week to hydrate
+  // Find existing log for this exercise in the current cycle/week only.
   const existingLog = useMemo(() => {
     if (!prog) return null;
-    return logs.find(
-      (l) =>
-        l.lift_id === `${type}-${idx}` &&
-        l.program_id === prog.id &&
-        l.cycle === prog.cycle &&
-        (isMain ? l.week === prog.week : true),
-    ) ?? null;
-  }, [logs, prog, type, idx, isMain]);
+    return (
+      [...logs].reverse().find(
+        (l) =>
+          l.lift_id === `${type}-${idx}` &&
+          l.program_id === prog.id &&
+          l.cycle === prog.cycle &&
+          l.week === prog.week,
+      ) ?? null
+    );
+  }, [logs, prog, type, idx]);
 
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
