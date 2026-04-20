@@ -9,38 +9,168 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SessionRouteImport } from './routes/session'
+import { Route as PerformanceRouteImport } from './routes/performance'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProgramNewRouteImport } from './routes/program.new'
+import { Route as WorkoutTypeIdxRouteImport } from './routes/workout.$type.$idx'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionRoute = SessionRouteImport.update({
+  id: '/session',
+  path: '/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProgramNewRoute = ProgramNewRouteImport.update({
+  id: '/program/new',
+  path: '/program/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkoutTypeIdxRoute = WorkoutTypeIdxRouteImport.update({
+  id: '/workout/$type/$idx',
+  path: '/workout/$type/$idx',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/history': typeof HistoryRoute
+  '/performance': typeof PerformanceRoute
+  '/session': typeof SessionRoute
+  '/settings': typeof SettingsRoute
+  '/program/new': typeof ProgramNewRoute
+  '/workout/$type/$idx': typeof WorkoutTypeIdxRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/history': typeof HistoryRoute
+  '/performance': typeof PerformanceRoute
+  '/session': typeof SessionRoute
+  '/settings': typeof SettingsRoute
+  '/program/new': typeof ProgramNewRoute
+  '/workout/$type/$idx': typeof WorkoutTypeIdxRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/history': typeof HistoryRoute
+  '/performance': typeof PerformanceRoute
+  '/session': typeof SessionRoute
+  '/settings': typeof SettingsRoute
+  '/program/new': typeof ProgramNewRoute
+  '/workout/$type/$idx': typeof WorkoutTypeIdxRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/performance'
+    | '/session'
+    | '/settings'
+    | '/program/new'
+    | '/workout/$type/$idx'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/performance'
+    | '/session'
+    | '/settings'
+    | '/program/new'
+    | '/workout/$type/$idx'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/performance'
+    | '/session'
+    | '/settings'
+    | '/program/new'
+    | '/workout/$type/$idx'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  HistoryRoute: typeof HistoryRoute
+  PerformanceRoute: typeof PerformanceRoute
+  SessionRoute: typeof SessionRoute
+  SettingsRoute: typeof SettingsRoute
+  ProgramNewRoute: typeof ProgramNewRoute
+  WorkoutTypeIdxRoute: typeof WorkoutTypeIdxRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/session': {
+      id: '/session'
+      path: '/session'
+      fullPath: '/session'
+      preLoaderRoute: typeof SessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,21 +178,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/program/new': {
+      id: '/program/new'
+      path: '/program/new'
+      fullPath: '/program/new'
+      preLoaderRoute: typeof ProgramNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workout/$type/$idx': {
+      id: '/workout/$type/$idx'
+      path: '/workout/$type/$idx'
+      fullPath: '/workout/$type/$idx'
+      preLoaderRoute: typeof WorkoutTypeIdxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  HistoryRoute: HistoryRoute,
+  PerformanceRoute: PerformanceRoute,
+  SessionRoute: SessionRoute,
+  SettingsRoute: SettingsRoute,
+  ProgramNewRoute: ProgramNewRoute,
+  WorkoutTypeIdxRoute: WorkoutTypeIdxRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
