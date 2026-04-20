@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS, SUPP_SETS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS, SUPP_SETS } from "@/lib/531";
 
 export const Route = createFileRoute("/session")({
   component: SessionPage,
@@ -21,8 +21,8 @@ function SessionPage() {
     );
   }
 
-  const { week, cycle } = prog;
-  const title = `${WEEK_LABELS[week]} · Cycle ${cycle}`;
+  const { week, day, cycle } = prog;
+  const title = `${WEEK_LABELS[week]} · ${DAY_LABELS[day]} · Cycle ${cycle}`;
 
   function getLatest1RM(idx: number): number | null {
     const log = [...logs].reverse().find((l) => l.lift_id === `main-${idx}` && l.program_id === prog!.id && l.e1rm);
@@ -33,7 +33,7 @@ function SessionPage() {
     <AppShell title={title} back={() => navigate({ to: "/" })}>
       {prog.main_lifts.length > 0 && <SectionLabel>Main lifts — 5/3/1</SectionLabel>}
       {prog.main_lifts.map((l, i) => {
-        const done = !!logs.find((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.week === week && lg.cycle === cycle);
+        const done = !!logs.find((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.week === week && lg.day === day && lg.cycle === cycle);
         const note = l.bodyweight ? `BW ${bodyweight} kg + ${l.addedLoad ?? 0} kg` : `TM: ${l.tm} kg`;
         const rm = getLatest1RM(i);
         const inner = (
@@ -61,7 +61,7 @@ function SessionPage() {
 
       {prog.supp_lifts.length > 0 && <SectionLabel>Supporting lifts</SectionLabel>}
       {prog.supp_lifts.map((l, i) => {
-        const lastLog = [...logs].reverse().find((lg) => lg.lift_id === `supp-${i}` && lg.program_id === prog.id && lg.week === week && lg.cycle === cycle);
+        const lastLog = [...logs].reverse().find((lg) => lg.lift_id === `supp-${i}` && lg.program_id === prog.id && lg.week === week && lg.day === day && lg.cycle === cycle);
         const done = !!lastLog;
         const note = l.bodyweight ? `BW ${bodyweight} kg + ${l.weight} kg` : `${l.weight} kg`;
         const inner = (
