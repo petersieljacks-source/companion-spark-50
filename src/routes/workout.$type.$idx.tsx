@@ -199,7 +199,6 @@ function WorkoutPage() {
   const nextExerciseLinear = currentPos >= 0 && currentPos < ordered.length - 1 ? ordered[currentPos + 1] : null;
   const isLastExercise = currentPos === ordered.length - 1;
   const isLastSupportingExercise = !isMain && idx === prog.supp_lifts.length - 1;
-  const shouldShowFinish = isLastExercise || isLastSupportingExercise || !nextPos;
 
   async function saveAndBack() {
     const ok = await doSave({ silent: false });
