@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
 
 export const Route = createFileRoute("/performance")({
   component: Performance,
@@ -82,12 +82,13 @@ function Performance() {
           <div className="p-4 text-[13px] text-muted-foreground">No AMRAP sets logged yet.</div>
         ) : (
           <div>
-            <div className="grid grid-cols-[1fr_44px_70px_50px_70px] border-b border-border text-[11px] text-muted-foreground">
-              <div className="px-3.5 py-2.5">Date</div>
+            <div className="grid grid-cols-[1fr_38px_38px_64px_44px_64px] border-b border-border text-[11px] text-muted-foreground">
+              <div className="px-3 py-2.5">Date</div>
               <div className="px-1 py-2.5 text-center">Wk</div>
-              <div className="px-2 py-2.5 text-center">Weight</div>
+              <div className="px-1 py-2.5 text-center">Day</div>
+              <div className="px-1 py-2.5 text-center">Weight</div>
               <div className="px-1 py-2.5 text-center">Reps</div>
-              <div className="px-2.5 py-2.5 text-right">Est 1RM</div>
+              <div className="px-2 py-2.5 text-right">Est 1RM</div>
             </div>
             {[...lift.amrapLogs].reverse().map((lg) => {
               const a = (lg.sets ?? []).find((s) => s.amrap && s.reps > 0);
@@ -97,17 +98,19 @@ function Performance() {
                     ? `+${(a.addedWeight ?? 0)}`
                     : `${a.weight}`)
                 : "—";
+              const dayShort = (DAY_LABELS[lg.day] ?? `Day ${(lg.day ?? 0) + 1}`).replace("Day ", "D");
               return (
-                <div key={lg.id} className="grid grid-cols-[1fr_44px_70px_50px_70px] border-b border-border last:border-0">
-                  <div className="px-3.5 py-2.5 text-[13px]">{d}</div>
+                <div key={lg.id} className="grid grid-cols-[1fr_38px_38px_64px_44px_64px] border-b border-border last:border-0">
+                  <div className="px-3 py-2.5 text-[13px]">{d}</div>
                   <div className="px-1 py-2.5 text-center text-[13px] text-muted-foreground">
                     {(WEEK_LABELS[lg.week] || "—").replace("Week ", "W")}
                   </div>
-                  <div className="px-2 py-2.5 text-center text-[13px] font-medium">
+                  <div className="px-1 py-2.5 text-center text-[13px] text-muted-foreground">{dayShort}</div>
+                  <div className="px-1 py-2.5 text-center text-[13px] font-medium">
                     {weightLabel}{a ? " kg" : ""}
                   </div>
                   <div className="px-1 py-2.5 text-center text-[13px] font-medium text-warning">{a ? a.reps : "—"}</div>
-                  <div className="px-2.5 py-2.5 text-right text-[13px] font-semibold">{lg.e1rm ? `${lg.e1rm} kg` : "—"}</div>
+                  <div className="px-2 py-2.5 text-right text-[13px] font-semibold">{lg.e1rm ? `${lg.e1rm} kg` : "—"}</div>
                 </div>
               );
             })}
