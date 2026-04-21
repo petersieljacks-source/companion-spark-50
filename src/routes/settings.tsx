@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
@@ -19,6 +19,17 @@ function Settings() {
   const [restartOpen, setRestartOpen] = useState(false);
   const [restartTMs, setRestartTMs] = useState<number[]>([]);
 
+  // Local edit buffers — keystrokes update local state; we commit on blur/Enter
+  // to avoid one network write per character.
+  const [mainEdits, setMainEdits] = useState<Record<number, string>>({});
+  const [suppEdits, setSuppEdits] = useState<Record<number, string>>({});
+
+  // Reset buffers when program identity changes.
+  useEffect(() => {
+    setMainEdits({});
+    setSuppEdits({});
+  }, [prog?.id]);
+
   if (loading) return <AppShell title="Settings"><Empty>Loading…</Empty></AppShell>;
 
   function openRestart() {
@@ -29,10 +40,50 @@ function Settings() {
   async function confirmRestart() {
     if (!prog) return;
     const newMain: MainLift[] = prog.main_lifts.map((l, i) => ({ ...l, tm: restartTMs[i] || l.tm }));
-    await insertRestartMarker(prog.id, prog.cycle, `Restarted from cycle ${prog.cycle}, week ${WEEK_LABELS[prog.week]}`);
-    await updateProgram(prog.id, { week: 0, cycle: 1, main_lifts: newMain });
+    const newCycle = prog.cycle + 1;
+    await insertRestartMarker(prog.id, newCycle, `Restarted from cycle ${prog.cycle}, ${WEEK_LABELS[prog.week]}`);
+    await updateProgram(prog.id, { week: 0, day: 0, cycle: newCycle, main_lifts: newMain });
     setRestartOpen(false);
-    toast.success("Cycle restarted. Previous data kept in History.");
+    toast.success(`Cycle ${newCycle} started. Previous data kept in History.`);
+  }
+
+  async function commitMainTm(i: number, l: MainLift) {
+    if (!prog) return;
+    const raw = mainEdits[i];
+    if (raw === undefined) return;
+    const v = parseFloat(raw);
+    if (!isFinite(v) || v <= 0) {
+      setMainEdits((m) => { const c = { ...m }; delete c[i]; return c; });
+      return;
+    }
+    if (l.bodyweight) {
+      const newMain = prog.main_lifts.map((x, j) =>
+        j === i ? { ...x, addedLoad: v, tm: bodyweight + v } : x,
+      );
+      await updateProgram(prog.id, { main_lifts: newMain });
+    } else {
+      if (v === l.tm) {
+        setMainEdits((m) => { const c = { ...m }; delete c[i]; return c; });
+        return;
+      }
+      const newMain = prog.main_lifts.map((x, j) => j === i ? { ...x, tm: v } : x);
+      await updateProgram(prog.id, { main_lifts: newMain });
+    }
+    setMainEdits((m) => { const c = { ...m }; delete c[i]; return c; });
+  }
+
+  async function commitSupp(i: number, l: SuppLift) {
+    if (!prog) return;
+    const raw = suppEdits[i];
+    if (raw === undefined) return;
+    const v = parseFloat(raw);
+    if (!isFinite(v) || v < 0 || v === l.weight) {
+      setSuppEdits((m) => { const c = { ...m }; delete c[i]; return c; });
+      return;
+    }
+    const newSupp: SuppLift[] = prog.supp_lifts.map((x, j) => j === i ? { ...x, weight: v } : x);
+    await updateProgram(prog.id, { supp_lifts: newSupp });
+    setSuppEdits((m) => { const c = { ...m }; delete c[i]; return c; });
   }
 
   return (
@@ -57,6 +108,7 @@ function Settings() {
         <div className="flex items-center gap-2">
           <input
             type="number"
+            inputMode="decimal"
             min={30}
             step={0.5}
             value={bwInput}
@@ -85,80 +137,83 @@ function Settings() {
           {prog.main_lifts.length > 0 && (
             <Card>
               <div className="mb-2.5 text-[13px] font-medium text-muted-foreground">Main lifts — training max</div>
-              {prog.main_lifts.map((l, i) => (
-                <div key={i} className="border-b border-border py-2 last:border-0">
-                  {l.bodyweight ? (
-                    <>
+              {prog.main_lifts.map((l, i) => {
+                const displayed = mainEdits[i] ?? String(l.bodyweight ? (l.addedLoad ?? 0) : l.tm);
+                return (
+                  <div key={i} className="border-b border-border py-2 last:border-0">
+                    {l.bodyweight ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 text-sm">{l.name} <LiftBadge kind="bw" /></div>
+                          <span className="text-[12px] text-muted-foreground">+</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step={2.5}
+                            value={displayed}
+                            onChange={(e) => setMainEdits((m) => ({ ...m, [i]: e.target.value }))}
+                            onBlur={() => void commitMainTm(i, l)}
+                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                            className="w-20 rounded-lg border border-input bg-input-bg px-2 py-1 text-center text-sm"
+                          />
+                          <span className="text-[12px] text-muted-foreground">kg</span>
+                        </div>
+                        <div className="mt-1 text-[12px] text-muted-foreground">
+                          TM = BW {bodyweight} + {l.addedLoad ?? 0} = {bodyweight + (l.addedLoad ?? 0)} kg
+                        </div>
+                      </>
+                    ) : (
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 text-sm">{l.name} <LiftBadge kind="bw" /></div>
-                        <span className="text-[12px] text-muted-foreground">+</span>
+                        <div className="flex-1 text-sm">{l.name}</div>
                         <input
                           type="number"
+                          inputMode="decimal"
                           step={2.5}
-                          value={l.addedLoad ?? 0}
-                          onChange={async (e) => {
-                            const v = parseFloat(e.target.value) || 0;
-                            const newMain = prog.main_lifts.map((x, j) => j === i ? { ...x, addedLoad: v, tm: bodyweight + v } : x);
-                            await updateProgram(prog.id, { main_lifts: newMain });
-                          }}
+                          value={displayed}
+                          onChange={(e) => setMainEdits((m) => ({ ...m, [i]: e.target.value }))}
+                          onBlur={() => void commitMainTm(i, l)}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                           className="w-20 rounded-lg border border-input bg-input-bg px-2 py-1 text-center text-sm"
                         />
                         <span className="text-[12px] text-muted-foreground">kg</span>
                       </div>
-                      <div className="mt-1 text-[12px] text-muted-foreground">
-                        TM = BW {bodyweight} + {l.addedLoad ?? 0} = {bodyweight + (l.addedLoad ?? 0)} kg
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 text-sm">{l.name}</div>
-                      <input
-                        type="number"
-                        step={2.5}
-                        value={l.tm}
-                        onChange={async (e) => {
-                          const v = parseFloat(e.target.value) || l.tm;
-                          const newMain = prog.main_lifts.map((x, j) => j === i ? { ...x, tm: v } : x);
-                          await updateProgram(prog.id, { main_lifts: newMain });
-                        }}
-                        className="w-20 rounded-lg border border-input bg-input-bg px-2 py-1 text-center text-sm"
-                      />
-                      <span className="text-[12px] text-muted-foreground">kg</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </Card>
           )}
 
           {prog.supp_lifts.length > 0 && (
             <Card>
               <div className="mb-2.5 text-[13px] font-medium text-muted-foreground">Supporting lifts — working load</div>
-              {prog.supp_lifts.map((l, i) => (
-                <div key={i} className="border-b border-border py-2 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 text-sm">{l.name}{l.bodyweight && <LiftBadge kind="bw" />}</div>
-                    {l.bodyweight && <span className="text-[12px] text-muted-foreground">+</span>}
-                    <input
-                      type="number"
-                      step={2.5}
-                      value={l.weight}
-                      onChange={async (e) => {
-                        const v = parseFloat(e.target.value) || 0;
-                        const newSupp: SuppLift[] = prog.supp_lifts.map((x, j) => j === i ? { ...x, weight: v } : x);
-                        await updateProgram(prog.id, { supp_lifts: newSupp });
-                      }}
-                      className="w-20 rounded-lg border border-input bg-input-bg px-2 py-1 text-center text-sm"
-                    />
-                    <span className="text-[12px] text-muted-foreground">{l.bodyweight ? "kg added" : "kg"}</span>
-                  </div>
-                  {l.bodyweight && (
-                    <div className="mt-1 text-[12px] text-muted-foreground">
-                      Total = BW {bodyweight} + {l.weight} = {bodyweight + l.weight} kg
+              {prog.supp_lifts.map((l, i) => {
+                const displayed = suppEdits[i] ?? String(l.weight);
+                return (
+                  <div key={i} className="border-b border-border py-2 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 text-sm">{l.name}{l.bodyweight && <LiftBadge kind="bw" />}</div>
+                      {l.bodyweight && <span className="text-[12px] text-muted-foreground">+</span>}
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step={2.5}
+                        value={displayed}
+                        onChange={(e) => setSuppEdits((m) => ({ ...m, [i]: e.target.value }))}
+                        onBlur={() => void commitSupp(i, l)}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="w-20 rounded-lg border border-input bg-input-bg px-2 py-1 text-center text-sm"
+                      />
+                      <span className="text-[12px] text-muted-foreground">{l.bodyweight ? "kg added" : "kg"}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {l.bodyweight && (
+                      <div className="mt-1 text-[12px] text-muted-foreground">
+                        Total = BW {bodyweight} + {l.weight} = {bodyweight + l.weight} kg
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </Card>
           )}
 
@@ -178,6 +233,7 @@ function Settings() {
                     <div className="flex-1 text-sm">{l.name}</div>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step={2.5}
                       value={restartTMs[i] ?? l.tm}
                       onChange={(e) => {

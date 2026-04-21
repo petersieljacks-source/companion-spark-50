@@ -218,11 +218,15 @@ function WorkoutPage() {
     if (!ok) return;
     navigate({ to: "/" });
   }
-  function gotoPrev() {
-    if (prevExercise) navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
+  async function gotoPrev() {
+    if (!prevExercise) return;
+    await doSave({ silent: true });
+    navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
   }
-  function gotoNext() {
-    if (nextExerciseLinear) navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) } });
+  async function gotoNext() {
+    if (!nextExerciseLinear) return;
+    await doSave({ silent: true });
+    navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) } });
   }
 
   const rmEst = (() => {
@@ -315,6 +319,8 @@ function WorkoutPage() {
               <div>
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   min={0}
                   value={reps[i] ?? 0}
                   onFocus={(e) => e.currentTarget.select()}

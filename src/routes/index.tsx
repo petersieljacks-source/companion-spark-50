@@ -283,6 +283,8 @@ function WeekRow({
       {Array.from({ length: DAYS_PER_WEEK }).map((_, day) => {
         const done = isWorkoutDone(prog, logs, prog.cycle, week, day);
         const isCurrent = prog.week === week && prog.day === day;
+        // A cell is "future" relative to current position when it lies later in the cycle.
+        const isFuture = week > prog.week || (week === prog.week && day > prog.day);
         const cls = isCurrent
           ? "border-info bg-info-bg text-info"
           : done
@@ -291,7 +293,16 @@ function WeekRow({
         return (
           <button
             key={day}
-            onClick={() => onJumpTo(week, day)}
+            onClick={() => {
+              if (isCurrent) return;
+              if (isFuture && !done) {
+                const ok = confirm(
+                  `Skip ahead to ${weekLabel} · ${DAY_LABELS[day]}? Workouts in between will be left unlogged.`,
+                );
+                if (!ok) return;
+              }
+              onJumpTo(week, day);
+            }}
             className={`flex h-11 items-center justify-center rounded-lg border text-[13px] font-medium ${cls}`}
             aria-label={`${weekLabel} ${DAY_LABELS[day]}${done ? " completed" : ""}${isCurrent ? " current" : ""}`}
           >
