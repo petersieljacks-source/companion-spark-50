@@ -4,13 +4,31 @@ import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
 import { WEEK_LABELS, DAY_LABELS, SUPP_SETS } from "@/lib/531";
 
+type SessionSearch = {
+  week?: number;
+  day?: number;
+  cycle?: number;
+};
+
 export const Route = createFileRoute("/session")({
+  validateSearch: (search: Record<string, unknown>): SessionSearch => {
+    const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : undefined);
+    const w = num(search.week);
+    const d = num(search.day);
+    const c = num(search.cycle);
+    return {
+      week: Number.isFinite(w) ? w : undefined,
+      day: Number.isFinite(d) ? d : undefined,
+      cycle: Number.isFinite(c) ? c : undefined,
+    };
+  },
   component: SessionPage,
 });
 
 function SessionPage() {
   const navigate = useNavigate();
   const { activeProgram: prog, logs, bodyweight, loading } = useStore();
+  const search = Route.useSearch();
 
   if (loading) return <AppShell title="Session"><Empty>Loading…</Empty></AppShell>;
   if (!prog) {
@@ -21,13 +39,21 @@ function SessionPage() {
     );
   }
 
-  const { week, day, cycle } = prog;
+  // Override-aware values: review historical workouts via search params, otherwise use program pointer.
+  const week = search.week ?? prog.week;
+  const day = search.day ?? prog.day;
+  const cycle = search.cycle ?? prog.cycle;
+  const isReview = search.week !== undefined || search.day !== undefined || search.cycle !== undefined;
+
   const title = `${WEEK_LABELS[week]} · ${DAY_LABELS[day]} · Cycle ${cycle}`;
 
   function getLatest1RM(idx: number): number | null {
     const log = [...logs].reverse().find((l) => l.lift_id === `main-${idx}` && l.program_id === prog!.id && l.e1rm);
     return log ? Number(log.e1rm) : null;
   }
+
+  // Build the search params to forward to the workout page when in review mode.
+  const forwardSearch = isReview ? { week, day, cycle } : {};
 
   return (
     <AppShell title={title} back={() => navigate({ to: "/" })}>
@@ -51,9 +77,11 @@ function SessionPage() {
           </Card>
         );
         return done ? (
-          <div key={i}>{inner}</div>
+          <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} search={forwardSearch} className="block">
+            {inner}
+          </Link>
         ) : (
-          <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} className="block">
+          <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} search={forwardSearch} className="block">
             {inner}
           </Link>
         );
@@ -79,9 +107,11 @@ function SessionPage() {
           </Card>
         );
         return done ? (
-          <div key={i}>{inner}</div>
+          <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} search={forwardSearch} className="block">
+            {inner}
+          </Link>
         ) : (
-          <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} className="block">
+          <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} search={forwardSearch} className="block">
             {inner}
           </Link>
         );

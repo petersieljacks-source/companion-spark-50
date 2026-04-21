@@ -6,7 +6,20 @@ import { Card, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
 import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog } from "@/lib/531";
 
+type WorkoutSearch = { week?: number; day?: number; cycle?: number };
+
 export const Route = createFileRoute("/workout/$type/$idx")({
+  validateSearch: (search: Record<string, unknown>): WorkoutSearch => {
+    const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : undefined);
+    const w = num(search.week);
+    const d = num(search.day);
+    const c = num(search.cycle);
+    return {
+      week: Number.isFinite(w) ? w : undefined,
+      day: Number.isFinite(d) ? d : undefined,
+      cycle: Number.isFinite(c) ? c : undefined,
+    };
+  },
   component: WorkoutPage,
 });
 
@@ -14,10 +27,18 @@ function WorkoutPage() {
   const { type, idx: idxStr } = Route.useParams();
   const idx = parseInt(idxStr, 10);
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { activeProgram: prog, logs, bodyweight, upsertLog, updateProgram } = useStore();
   const isMain = type === "main";
 
-  const [currentWeek, setCurrentWeek] = useState(prog?.week ?? 0);
+  // Override-aware position: when search params present, we are reviewing/editing a historical workout.
+  // Otherwise use the program's current pointer.
+  const effectiveWeek = search.week ?? prog?.week ?? 0;
+  const effectiveDay = search.day ?? prog?.day ?? 0;
+  const effectiveCycle = search.cycle ?? prog?.cycle ?? 1;
+  const isReview = search.week !== undefined || search.day !== undefined || search.cycle !== undefined;
+
+  const [currentWeek, setCurrentWeek] = useState(effectiveWeek);
   const [reps, setReps] = useState<number[]>([]);
   const [done, setDone] = useState<boolean[]>([]);
 
@@ -28,7 +49,7 @@ function WorkoutPage() {
 
   const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
 
-  // Find existing log for this exercise in the current cycle/week/day only.
+  // Find existing log for this exercise in the effective cycle/week/day.
   const existingLog = useMemo(() => {
     if (!prog) return null;
     return (
@@ -36,33 +57,33 @@ function WorkoutPage() {
         (l) =>
           l.lift_id === `${type}-${idx}` &&
           l.program_id === prog.id &&
-          l.cycle === prog.cycle &&
-          l.week === prog.week &&
-          l.day === prog.day,
+          l.cycle === effectiveCycle &&
+          l.week === effectiveWeek &&
+          l.day === effectiveDay,
       ) ?? null
     );
-  }, [logs, prog, type, idx]);
+  }, [logs, prog, type, idx, effectiveCycle, effectiveWeek, effectiveDay]);
 
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!prog) return;
-    const key = `${prog.id}-${type}-${idx}-${prog.week}-${prog.day}-${prog.cycle}`;
+    const key = `${prog.id}-${type}-${idx}-${effectiveWeek}-${effectiveDay}-${effectiveCycle}`;
     if (hydratedKeyRef.current === key) return;
     hydratedKeyRef.current = key;
-    setCurrentWeek(prog.week);
+    setCurrentWeek(effectiveWeek);
     if (existingLog && Array.isArray(existingLog.sets) && existingLog.sets.length > 0) {
       const s = existingLog.sets as SetLog[];
       setReps(s.map((x) => x.reps ?? 0));
       setDone(s.map((x) => !!x.done));
     } else if (isMain) {
-      const init = WEEK_SCHEME[prog.week].map((s) => (typeof s.reps === "number" ? s.reps : 0));
+      const init = WEEK_SCHEME[effectiveWeek].map((s) => (typeof s.reps === "number" ? s.reps : 0));
       setReps(init);
       setDone(init.map(() => false));
     } else {
       setReps(Array(SUPP_SETS).fill(0));
       setDone(Array(SUPP_SETS).fill(false));
     }
-  }, [prog, isMain, idx, type, existingLog]);
+  }, [prog, isMain, idx, type, existingLog, effectiveWeek, effectiveDay, effectiveCycle]);
 
   const mainLift = isMain && lift ? (lift as { name: string; bodyweight: boolean; tm: number; addedLoad?: number }) : null;
   const suppLift = !isMain && lift ? (lift as { name: string; bodyweight: boolean; weight: number }) : null;
@@ -102,7 +123,7 @@ function WorkoutPage() {
     for (const s of all) {
       if (s.type === type && s.idx === idx) continue;
       const liftId = `${s.type}-${s.idx}`;
-      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === prog!.week && l.day === prog!.day && l.cycle === prog!.cycle);
+      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === effectiveWeek && l.day === effectiveDay && l.cycle === effectiveCycle);
       if (!lg) return s;
     }
     return null;
@@ -132,8 +153,8 @@ function WorkoutPage() {
         type: isMain ? "main" : "supp",
         bodyweight: lift!.bodyweight,
         week: currentWeek,
-        day: prog!.day,
-        cycle: prog!.cycle,
+        day: effectiveDay,
+        cycle: effectiveCycle,
         sets,
         e1rm,
         overload_earned: overload,
@@ -202,16 +223,19 @@ function WorkoutPage() {
   const isLastExercise = currentPos === ordered.length - 1;
   const isLastSupportingExercise = !isMain && idx === prog.supp_lifts.length - 1;
 
+  // Preserve search params (review mode) when navigating between session/workout pages.
+  const navSearch = isReview ? { week: effectiveWeek, day: effectiveDay, cycle: effectiveCycle } : {};
+
   async function saveAndBack() {
     const ok = await doSave({ silent: false });
-    if (ok) navigate({ to: "/session" });
+    if (ok) navigate({ to: "/session", search: navSearch });
   }
   async function saveAndNext() {
     const ok = await doSave({ silent: false });
     if (!ok) return;
     const next = findNextPos();
-    if (!next) navigate({ to: "/session" });
-    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) } });
+    if (!next) navigate({ to: "/session", search: navSearch });
+    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) }, search: navSearch });
   }
   async function finishProgram() {
     const ok = await doSave({ silent: false });
@@ -221,12 +245,12 @@ function WorkoutPage() {
   async function gotoPrev() {
     if (!prevExercise) return;
     await doSave({ silent: true });
-    navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
+    navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) }, search: navSearch });
   }
   async function gotoNext() {
     if (!nextExerciseLinear) return;
     await doSave({ silent: true });
-    navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) } });
+    navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) }, search: navSearch });
   }
 
   const rmEst = (() => {
@@ -239,7 +263,7 @@ function WorkoutPage() {
   const shouldShowFinish = isLastExercise || isLastSupportingExercise || !nextPos;
 
   return (
-    <AppShell title={lift.name} hideTabBar back={() => navigate({ to: "/session" })}>
+    <AppShell title={lift.name} hideTabBar back={() => navigate({ to: "/session", search: navSearch })}>
       {isMain && (
         <div className="flex gap-1.5 px-4 pt-3">
           {WEEK_LABELS.map((l, i) => (
