@@ -27,10 +27,18 @@ function WorkoutPage() {
   const { type, idx: idxStr } = Route.useParams();
   const idx = parseInt(idxStr, 10);
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { activeProgram: prog, logs, bodyweight, upsertLog, updateProgram } = useStore();
   const isMain = type === "main";
 
-  const [currentWeek, setCurrentWeek] = useState(prog?.week ?? 0);
+  // Override-aware position: when search params present, we are reviewing/editing a historical workout.
+  // Otherwise use the program's current pointer.
+  const effectiveWeek = search.week ?? prog?.week ?? 0;
+  const effectiveDay = search.day ?? prog?.day ?? 0;
+  const effectiveCycle = search.cycle ?? prog?.cycle ?? 1;
+  const isReview = search.week !== undefined || search.day !== undefined || search.cycle !== undefined;
+
+  const [currentWeek, setCurrentWeek] = useState(effectiveWeek);
   const [reps, setReps] = useState<number[]>([]);
   const [done, setDone] = useState<boolean[]>([]);
 
@@ -41,7 +49,7 @@ function WorkoutPage() {
 
   const numSets = isMain ? WEEK_SCHEME[currentWeek].length : SUPP_SETS;
 
-  // Find existing log for this exercise in the current cycle/week/day only.
+  // Find existing log for this exercise in the effective cycle/week/day.
   const existingLog = useMemo(() => {
     if (!prog) return null;
     return (
@@ -49,33 +57,33 @@ function WorkoutPage() {
         (l) =>
           l.lift_id === `${type}-${idx}` &&
           l.program_id === prog.id &&
-          l.cycle === prog.cycle &&
-          l.week === prog.week &&
-          l.day === prog.day,
+          l.cycle === effectiveCycle &&
+          l.week === effectiveWeek &&
+          l.day === effectiveDay,
       ) ?? null
     );
-  }, [logs, prog, type, idx]);
+  }, [logs, prog, type, idx, effectiveCycle, effectiveWeek, effectiveDay]);
 
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!prog) return;
-    const key = `${prog.id}-${type}-${idx}-${prog.week}-${prog.day}-${prog.cycle}`;
+    const key = `${prog.id}-${type}-${idx}-${effectiveWeek}-${effectiveDay}-${effectiveCycle}`;
     if (hydratedKeyRef.current === key) return;
     hydratedKeyRef.current = key;
-    setCurrentWeek(prog.week);
+    setCurrentWeek(effectiveWeek);
     if (existingLog && Array.isArray(existingLog.sets) && existingLog.sets.length > 0) {
       const s = existingLog.sets as SetLog[];
       setReps(s.map((x) => x.reps ?? 0));
       setDone(s.map((x) => !!x.done));
     } else if (isMain) {
-      const init = WEEK_SCHEME[prog.week].map((s) => (typeof s.reps === "number" ? s.reps : 0));
+      const init = WEEK_SCHEME[effectiveWeek].map((s) => (typeof s.reps === "number" ? s.reps : 0));
       setReps(init);
       setDone(init.map(() => false));
     } else {
       setReps(Array(SUPP_SETS).fill(0));
       setDone(Array(SUPP_SETS).fill(false));
     }
-  }, [prog, isMain, idx, type, existingLog]);
+  }, [prog, isMain, idx, type, existingLog, effectiveWeek, effectiveDay, effectiveCycle]);
 
   const mainLift = isMain && lift ? (lift as { name: string; bodyweight: boolean; tm: number; addedLoad?: number }) : null;
   const suppLift = !isMain && lift ? (lift as { name: string; bodyweight: boolean; weight: number }) : null;
