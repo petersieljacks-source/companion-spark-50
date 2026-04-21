@@ -6,7 +6,20 @@ import { Card, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
 import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog } from "@/lib/531";
 
+type WorkoutSearch = { week?: number; day?: number; cycle?: number };
+
 export const Route = createFileRoute("/workout/$type/$idx")({
+  validateSearch: (search: Record<string, unknown>): WorkoutSearch => {
+    const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : undefined);
+    const w = num(search.week);
+    const d = num(search.day);
+    const c = num(search.cycle);
+    return {
+      week: Number.isFinite(w) ? w : undefined,
+      day: Number.isFinite(d) ? d : undefined,
+      cycle: Number.isFinite(c) ? c : undefined,
+    };
+  },
   component: WorkoutPage,
 });
 
