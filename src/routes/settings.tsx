@@ -29,10 +29,11 @@ function Settings() {
   async function confirmRestart() {
     if (!prog) return;
     const newMain: MainLift[] = prog.main_lifts.map((l, i) => ({ ...l, tm: restartTMs[i] || l.tm }));
-    await insertRestartMarker(prog.id, prog.cycle, `Restarted from cycle ${prog.cycle}, week ${WEEK_LABELS[prog.week]}`);
-    await updateProgram(prog.id, { week: 0, cycle: 1, main_lifts: newMain });
+    const newCycle = prog.cycle + 1;
+    await insertRestartMarker(prog.id, newCycle, `Restarted from cycle ${prog.cycle}, ${WEEK_LABELS[prog.week]}`);
+    await updateProgram(prog.id, { week: 0, day: 0, cycle: newCycle, main_lifts: newMain });
     setRestartOpen(false);
-    toast.success("Cycle restarted. Previous data kept in History.");
+    toast.success(`Cycle ${newCycle} started. Previous data kept in History.`);
   }
 
   return (

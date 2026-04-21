@@ -115,6 +115,7 @@ export function useStore() {
     if (!sameMain) {
       newCycle = existing.cycle + 1;
       patch.week = 0;
+      patch.day = 0;
       patch.cycle = newCycle;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
