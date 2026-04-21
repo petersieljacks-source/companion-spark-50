@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
 
 export const Route = createFileRoute("/history")({
   component: History,
@@ -30,6 +30,7 @@ function History() {
         const isMain = log.type === "main";
         const amrap = isMain && (log.sets ?? []).find((s) => s.amrap && s.reps > 0);
         const d = new Date(log.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        const dayLabel = DAY_LABELS[log.day] ?? `Day ${(log.day ?? 0) + 1}`;
         return (
           <Card key={log.id}>
             <div className="flex items-center justify-between">
@@ -38,7 +39,7 @@ function History() {
                 <LiftBadge kind={isMain ? "main" : "supp"} />
                 {log.bodyweight && <LiftBadge kind="bw" />}
                 <div className="mt-0.5 text-[12px] text-muted-foreground">
-                  {d} · Cycle {log.cycle} {WEEK_LABELS[log.week] ?? ""}
+                  {d} · Cycle {log.cycle} · {WEEK_LABELS[log.week] ?? ""} · {dayLabel}
                 </div>
               </div>
               {log.e1rm ? (
