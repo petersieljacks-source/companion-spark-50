@@ -115,9 +115,18 @@ function Home() {
               });
             }
           }}
-          onJumpTo={async (week, day) => {
-            await updateProgram(activeProgram.id, { week, day });
-            navigate({ to: "/session" });
+          onJumpTo={async (week, day, isFutureSkip) => {
+            if (isFutureSkip) {
+              // Real "skip ahead" — moves the program pointer.
+              await updateProgram(activeProgram.id, { week, day });
+              navigate({ to: "/session" });
+            } else {
+              // Review/edit a past or current cell — do NOT mutate the pointer.
+              navigate({
+                to: "/session",
+                search: { week, day, cycle: activeProgram.cycle },
+              });
+            }
           }}
           onTrain={() => navigate({ to: "/session" })}
         />
@@ -140,7 +149,7 @@ function ActiveHome({
   bw: number;
   onAdvance: () => void;
   onPrev: () => void;
-  onJumpTo: (week: number, day: number) => void;
+  onJumpTo: (week: number, day: number, isFutureSkip: boolean) => void;
   onTrain: () => void;
 }) {
   void bw;
@@ -233,7 +242,7 @@ function CycleGrid({
 }: {
   prog: Program;
   logs: WorkoutLog[];
-  onJumpTo: (week: number, day: number) => void;
+  onJumpTo: (week: number, day: number, isFutureSkip: boolean) => void;
 }) {
   return (
     <div className="px-4 pt-4">
@@ -276,7 +285,7 @@ function WeekRow({
   logs: WorkoutLog[];
   week: number;
   weekLabel: string;
-  onJumpTo: (week: number, day: number) => void;
+  onJumpTo: (week: number, day: number, isFutureSkip: boolean) => void;
 }) {
   return (
     <>
@@ -295,14 +304,19 @@ function WeekRow({
           <button
             key={day}
             onClick={() => {
-              if (isCurrent) return;
+              if (isCurrent) {
+                onJumpTo(week, day, false);
+                return;
+              }
               if (isFuture && !done) {
                 const ok = confirm(
                   `Skip ahead to ${weekLabel} · ${DAY_LABELS[day]}? Workouts in between will be left unlogged.`,
                 );
                 if (!ok) return;
+                onJumpTo(week, day, true);
+                return;
               }
-              onJumpTo(week, day);
+              onJumpTo(week, day, false);
             }}
             className={`flex h-11 items-center justify-center rounded-lg border text-[13px] font-medium ${cls}`}
             aria-label={`${weekLabel} ${DAY_LABELS[day]}${done ? " completed" : ""}${isCurrent ? " current" : ""}`}
