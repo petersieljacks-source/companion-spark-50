@@ -117,6 +117,7 @@ function Home() {
           }}
           onJumpTo={async (week, day) => {
             await updateProgram(activeProgram.id, { week, day });
+            navigate({ to: "/session" });
           }}
           onTrain={() => navigate({ to: "/session" })}
         />
