@@ -1,38 +1,25 @@
 
-Fix the workout screen so the bottom action bar is actually visible above the global tab bar, which will reveal the missing “Finish workout” button on the final exercise.
 
-1. Update the shared app shell
-- Add an option to `AppShell` to hide the global bottom tab bar on full-screen workout flows.
-- Keep the current default behavior for all other pages so the rest of the app is unchanged.
+## Fix back navigation after reviewing a past workout
 
-2. Apply the shell option to the workout route
-- Render the workout page without the global tab bar.
-- Preserve the existing sticky header and workout-specific controls.
+### Problem
+Tapping a completed cell in the cycle grid currently *moves* the program pointer (`activeProgram.week/day`) to that past workout, then opens the session. When you press Back, home shows that older day instead of your real current day. Reviewing a past workout should never change where you are in the program.
 
-3. Adjust the workout bottom action area
-- Keep the fixed bottom save/finish bar, but ensure it sits at the true bottom of the viewport without being covered.
-- Increase the page bottom spacer/padding so the last content row never sits under the action bar.
+### Solution
+Stop mutating the active program when jumping into a past workout. Instead, pass the target week/day/cycle as URL search params, so review/edit happens "in context" without changing the user's true position. The home page always shows the real current day.
 
-4. Keep finish-button logic simple and explicit
-- Continue treating the last exercise in the ordered session as the finish state.
-- Remove redundant conditions if needed so the button logic is easier to reason about and less likely to regress.
+### Behavior after the fix
+- Tap a **completed** cell → opens that workout's session view in review mode (URL: `/session?week=W&day=D&cycle=C`). Lifts are pre-filled with the logged data and remain editable. Pressing **Back** returns to home, which still shows the real current day (e.g. Cycle 2 · Week 1 · Day 2).
+- Tap the **current** cell (●) → opens the live session, same as the Train button.
+- Tap a **future** cell → still asks for confirmation; on confirm, this is a real "skip ahead" action that *does* move the pointer (current behavior preserved, since future = actually advancing the program).
+- **Train** button and **Previous / Next** buttons keep working as today (they manipulate the real pointer).
+- Inside a session opened in review mode, tapping a lift opens `/workout/main/0?week=W&day=D&cycle=C` so edits save against the correct historical slot. Back goes to the review session, then back to home (real day).
 
-5. Correct supporting-lift initialization if still needed
-- Ensure supporting exercise rep inputs start empty unless there is a saved log for the same program, week, cycle, type, and index.
-- Keep autosave hydration only for the exact current exercise.
+### Technical changes
+- **`src/routes/session.tsx`**: add `validateSearch` for optional `week`, `day`, `cycle` (numbers). Use them when present, otherwise fall back to `prog.week/day/cycle`. Forward these params on the inner `<Link to="/workout/...">` so the workout page logs into the right cell.
+- **`src/routes/workout.$type.$idx.tsx`**: add the same `validateSearch`. Replace every read of `prog.week/day/cycle` with the override-aware values (current week, day, cycle). Pass them into `upsertLog(...)` so edits write to the historical row, not today's. Keep `setCurrentWeek` initialised from the override week.
+- **`src/routes/index.tsx`**: change `onJumpTo(week, day)` so it no longer calls `updateProgram`. It just navigates: `navigate({ to: "/session", search: { week, day, cycle: prog.cycle } })`. The future-cell branch keeps its confirm + `updateProgram` (real skip-ahead).
+- **AppShell back button**: already routes to `/`, which now correctly shows the real current day because we never mutated it.
 
-6. Verify the workout flow end to end
-- Open a session, move through lifts, and confirm:
-  - non-final exercises show “Save & next”
-  - the final exercise shows “Finish workout”
-  - the bottom action bar is fully visible on mobile-sized viewports
-  - supporting lifts no longer start pre-filled unless previously saved
-  - tapping Finish returns to the main page
+No database, store, or migration changes needed.
 
-Technical details
-- Likely root cause: `TabBar` is fixed with higher stacking order than the workout action bar (`z-20` vs `z-10`), so the global nav overlays the workout footer.
-- Expected file changes:
-  - `src/components/AppShell.tsx`
-  - `src/routes/workout.$type.$idx.tsx`
-  - possibly minor spacing tweaks in `src/styles.css` only if needed
-- No backend changes should be required for this fix.
