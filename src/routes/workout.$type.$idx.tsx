@@ -263,7 +263,7 @@ function WorkoutPage() {
   const shouldShowFinish = isLastExercise || isLastSupportingExercise || !nextPos;
 
   return (
-    <AppShell title={lift.name} hideTabBar back={() => navigate({ to: "/session" })}>
+    <AppShell title={lift.name} hideTabBar back={() => navigate({ to: "/session", search: navSearch })}>
       {isMain && (
         <div className="flex gap-1.5 px-4 pt-3">
           {WEEK_LABELS.map((l, i) => (
