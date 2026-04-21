@@ -123,7 +123,7 @@ function WorkoutPage() {
     for (const s of all) {
       if (s.type === type && s.idx === idx) continue;
       const liftId = `${s.type}-${s.idx}`;
-      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === prog!.week && l.day === prog!.day && l.cycle === prog!.cycle);
+      const lg = logs.find((l) => l.lift_id === liftId && l.program_id === prog!.id && l.week === effectiveWeek && l.day === effectiveDay && l.cycle === effectiveCycle);
       if (!lg) return s;
     }
     return null;
@@ -153,8 +153,8 @@ function WorkoutPage() {
         type: isMain ? "main" : "supp",
         bodyweight: lift!.bodyweight,
         week: currentWeek,
-        day: prog!.day,
-        cycle: prog!.cycle,
+        day: effectiveDay,
+        cycle: effectiveCycle,
         sets,
         e1rm,
         overload_earned: overload,
@@ -223,16 +223,19 @@ function WorkoutPage() {
   const isLastExercise = currentPos === ordered.length - 1;
   const isLastSupportingExercise = !isMain && idx === prog.supp_lifts.length - 1;
 
+  // Preserve search params (review mode) when navigating between session/workout pages.
+  const navSearch = isReview ? { week: effectiveWeek, day: effectiveDay, cycle: effectiveCycle } : {};
+
   async function saveAndBack() {
     const ok = await doSave({ silent: false });
-    if (ok) navigate({ to: "/session" });
+    if (ok) navigate({ to: "/session", search: navSearch });
   }
   async function saveAndNext() {
     const ok = await doSave({ silent: false });
     if (!ok) return;
     const next = findNextPos();
-    if (!next) navigate({ to: "/session" });
-    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) } });
+    if (!next) navigate({ to: "/session", search: navSearch });
+    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) }, search: navSearch });
   }
   async function finishProgram() {
     const ok = await doSave({ silent: false });
@@ -242,12 +245,12 @@ function WorkoutPage() {
   async function gotoPrev() {
     if (!prevExercise) return;
     await doSave({ silent: true });
-    navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) } });
+    navigate({ to: "/workout/$type/$idx", params: { type: prevExercise.type, idx: String(prevExercise.idx) }, search: navSearch });
   }
   async function gotoNext() {
     if (!nextExerciseLinear) return;
     await doSave({ silent: true });
-    navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) } });
+    navigate({ to: "/workout/$type/$idx", params: { type: nextExerciseLinear.type, idx: String(nextExerciseLinear.idx) }, search: navSearch });
   }
 
   const rmEst = (() => {
