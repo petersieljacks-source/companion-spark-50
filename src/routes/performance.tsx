@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
+import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS, estimate1RM } from "@/lib/531";
 
 export const Route = createFileRoute("/performance")({
   component: Performance,
