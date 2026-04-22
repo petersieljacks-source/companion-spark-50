@@ -215,22 +215,6 @@ function ActiveHome({
       </div>
 
       <CycleGrid prog={prog} logs={logs} onJumpTo={onJumpTo} />
-
-      <div className="grid grid-cols-2 gap-2.5 px-4 pt-3">
-        <button
-          onClick={onPrev}
-          disabled={isFirst}
-          className="rounded-xl border border-input bg-card py-3 text-[14px] font-medium disabled:opacity-40"
-        >
-          ← Previous
-        </button>
-        <button
-          onClick={onAdvance}
-          className="rounded-xl border border-input bg-card py-3 text-[14px] font-medium"
-        >
-          Next →
-        </button>
-      </div>
     </>
   );
 }
