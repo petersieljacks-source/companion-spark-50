@@ -67,61 +67,11 @@ function Home() {
           prog={activeProgram}
           logs={logs}
           bw={bodyweight}
-          onAdvance={async () => {
-            // Advance one workout: day 0 -> 1 -> 2, then next week, then next cycle (with TM bumps).
-            const nextDay = activeProgram.day + 1;
-            if (nextDay < DAYS_PER_WEEK) {
-              await updateProgram(activeProgram.id, { day: nextDay });
-              return;
-            }
-            const nextWeek = activeProgram.week + 1;
-            if (nextWeek < 4) {
-              await updateProgram(activeProgram.id, { week: nextWeek, day: 0 });
-              return;
-            }
-            // End of cycle — bump TMs and restart.
-            const newCycle = activeProgram.cycle + 1;
-            const newMain = activeProgram.main_lifts.map((l) => {
-              if (l.bodyweight) {
-                const added = (l.addedLoad ?? 0) + 2.5;
-                return { ...l, addedLoad: added, tm: bodyweight + added };
-              }
-              return { ...l, tm: l.tm + 2.5 };
-            });
-            await updateProgram(activeProgram.id, {
-              week: 0,
-              day: 0,
-              cycle: newCycle,
-              main_lifts: newMain,
-            });
-          }}
-          onPrev={async () => {
-            // Step back one workout: day 2 -> 1 -> 0, then prior week, then prior cycle (no TM rollback).
-            const prevDay = activeProgram.day - 1;
-            if (prevDay >= 0) {
-              await updateProgram(activeProgram.id, { day: prevDay });
-              return;
-            }
-            const prevWeek = activeProgram.week - 1;
-            if (prevWeek >= 0) {
-              await updateProgram(activeProgram.id, { week: prevWeek, day: DAYS_PER_WEEK - 1 });
-              return;
-            }
-            if (activeProgram.cycle > 1) {
-              await updateProgram(activeProgram.id, {
-                cycle: activeProgram.cycle - 1,
-                week: 3,
-                day: DAYS_PER_WEEK - 1,
-              });
-            }
-          }}
           onJumpTo={async (week, day, isFutureSkip) => {
             if (isFutureSkip) {
-              // Real "skip ahead" — moves the program pointer.
               await updateProgram(activeProgram.id, { week, day });
               navigate({ to: "/session" });
             } else {
-              // Review/edit a past or current cell — do NOT mutate the pointer.
               navigate({
                 to: "/session",
                 search: { week, day, cycle: activeProgram.cycle },
