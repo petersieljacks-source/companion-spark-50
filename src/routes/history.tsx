@@ -27,6 +27,30 @@ function History() {
             </div>
           );
         }
+        if (log.type === "test") {
+          const d = new Date(log.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+          const set = (log.sets ?? [])[0];
+          return (
+            <Card key={log.id}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-medium">{log.lift_name}</span>
+                  <LiftBadge kind="test" />
+                  <div className="mt-0.5 text-[12px] text-muted-foreground">
+                    {d} · Manual 1RM test{set ? ` · ${set.weight} kg × ${set.reps}` : ""}
+                  </div>
+                </div>
+                {log.e1rm ? (
+                  <div className="text-right">
+                    <div className="text-[11px] text-muted-foreground">1RM</div>
+                    <div className="font-semibold">{log.e1rm} kg</div>
+                  </div>
+                ) : null}
+              </div>
+              {log.note ? <div className="mt-2 text-[13px] text-muted-foreground">{log.note}</div> : null}
+            </Card>
+          );
+        }
         const isMain = log.type === "main";
         const amrap = isMain && (log.sets ?? []).find((s) => s.amrap && s.reps > 0);
         const d = new Date(log.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });

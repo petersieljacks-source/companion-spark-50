@@ -191,6 +191,45 @@ export function useStore() {
     setState((s) => ({ ...s, bodyweight: bw }));
   }
 
+  async function addManualTest(input: {
+    program_id: string;
+    lift_idx: number;
+    lift_name: string;
+    date: string; // ISO
+    weight: number;
+    reps: number;
+    e1rm: number;
+    note?: string | null;
+  }) {
+    if (!user) throw new Error("Not signed in");
+    const ins = await supabase.from("workout_logs").insert({
+      user_id: user.id,
+      program_id: input.program_id,
+      lift_id: `main-${input.lift_idx}`,
+      lift_name: input.lift_name,
+      type: "test",
+      bodyweight: false,
+      week: 0,
+      day: 0,
+      cycle: 0,
+      sets: [
+        { weight: input.weight, addedWeight: 0, reps: input.reps, done: true },
+      ] as never,
+      e1rm: input.e1rm,
+      overload_earned: false,
+      note: input.note ?? null,
+      date: input.date,
+    });
+    if (ins.error) throw ins.error;
+    await refresh();
+  }
+
+  async function deleteLog(id: string) {
+    if (!user) return;
+    await supabase.from("workout_logs").delete().eq("id", id).eq("user_id", user.id);
+    await refresh();
+  }
+
   return {
     ...state,
     activeProgram,
@@ -202,5 +241,7 @@ export function useStore() {
     upsertLog,
     insertRestartMarker,
     setBodyweight,
+    addManualTest,
+    deleteLog,
   };
 }

@@ -1,16 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
+import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS, estimate1RM } from "@/lib/531";
 
 export const Route = createFileRoute("/performance")({
   component: Performance,
 });
 
 function Performance() {
-  const { activeProgram: prog, logs, loading } = useStore();
+  const { activeProgram: prog, logs, loading, addManualTest, deleteLog } = useStore();
   const [liftIdx, setLiftIdx] = useState(0);
 
   if (loading) return <AppShell title="Performance"><Empty>Loading…</Empty></AppShell>;
@@ -23,14 +24,13 @@ function Performance() {
       .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.e1rm)
       .sort((a, b) => a.date.localeCompare(b.date));
     const amrapLogs = logs
-      .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && (lg.sets ?? []).some((s) => s.amrap && s.reps > 0))
+      .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.type !== "test" && (lg.sets ?? []).some((s) => s.amrap && s.reps > 0))
       .sort((a, b) => a.date.localeCompare(b.date));
-    return { name: l.name, logs: liftLogs, amrapLogs };
+    const testLogs = logs
+      .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.type === "test")
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return { name: l.name, logs: liftLogs, amrapLogs, testLogs };
   });
-
-  if (lifts.every((l) => l.logs.length === 0)) {
-    return <AppShell title="Performance"><Empty>No AMRAP data yet.<br />Complete a workout and log your AMRAP reps.</Empty></AppShell>;
-  }
 
   const safeIdx = liftIdx >= lifts.length ? 0 : liftIdx;
   const lift = lifts[safeIdx];
@@ -69,12 +69,63 @@ function Performance() {
       <Card>
         {lift.logs.length < 2 ? (
           <div className="py-5 text-center text-[13px] text-muted-foreground">
-            Log at least 2 AMRAP sessions to see the trend.
+            Log at least 2 AMRAP sessions or add manual 1RM tests to see the trend.
           </div>
         ) : (
-          <Chart entries={lift.logs.map((l) => ({ date: l.date, e1rm: Number(l.e1rm) }))} />
+          <Chart entries={lift.logs.map((l) => ({ date: l.date, e1rm: Number(l.e1rm), kind: l.type === "test" ? "test" : "amrap" }))} />
         )}
       </Card>
+
+      <SectionLabel>Manual 1RM tests</SectionLabel>
+      <Card>
+        <ManualTestForm
+          liftName={lift.name}
+          onSubmit={async ({ date, weight, reps, e1rm, note }) => {
+            await addManualTest({
+              program_id: prog.id,
+              lift_idx: safeIdx,
+              lift_name: lift.name,
+              date,
+              weight,
+              reps,
+              e1rm,
+              note,
+            });
+          }}
+        />
+      </Card>
+      {lift.testLogs.length > 0 && (
+        <Card className="!p-0 mt-2">
+          <div className="grid grid-cols-[1fr_72px_44px_72px_32px] border-b border-border text-[11px] text-muted-foreground">
+            <div className="px-3 py-2.5">Date</div>
+            <div className="px-1 py-2.5 text-center">Weight</div>
+            <div className="px-1 py-2.5 text-center">Reps</div>
+            <div className="px-2 py-2.5 text-right">1RM</div>
+            <div />
+          </div>
+          {[...lift.testLogs].reverse().map((lg) => {
+            const set = (lg.sets ?? [])[0];
+            const d = new Date(lg.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" });
+            return (
+              <div key={lg.id} className="grid grid-cols-[1fr_72px_44px_72px_32px] border-b border-border last:border-0">
+                <div className="px-3 py-2.5 text-[13px]">{d}</div>
+                <div className="px-1 py-2.5 text-center text-[13px] font-medium">{set ? `${set.weight} kg` : "—"}</div>
+                <div className="px-1 py-2.5 text-center text-[13px] font-medium">{set ? set.reps : "—"}</div>
+                <div className="px-2 py-2.5 text-right text-[13px] font-semibold text-warning">{lg.e1rm} kg</div>
+                <button
+                  onClick={() => {
+                    if (confirm("Delete this 1RM test entry?")) deleteLog(lg.id);
+                  }}
+                  className="px-2 py-2.5 text-right text-[13px] text-muted-foreground hover:text-destructive"
+                  aria-label="Delete entry"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
       <SectionLabel>AMRAP log</SectionLabel>
       <Card className="!p-0">
@@ -121,7 +172,166 @@ function Performance() {
   );
 }
 
-function Chart({ entries }: { entries: { date: string; e1rm: number }[] }) {
+const testFormSchema = z.object({
+  date: z.string().nonempty("Date is required"),
+  weight: z.number({ invalid_type_error: "Weight is required" }).positive("Weight must be > 0").max(2000),
+  reps: z.number({ invalid_type_error: "Reps required" }).int().min(1, "Reps ≥ 1").max(20),
+  e1rm: z.number({ invalid_type_error: "1RM is required" }).positive("1RM must be > 0").max(2000),
+  note: z.string().max(200).optional(),
+});
+
+function ManualTestForm({
+  liftName,
+  onSubmit,
+}: {
+  liftName: string;
+  onSubmit: (input: { date: string; weight: number; reps: number; e1rm: number; note?: string }) => Promise<void>;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState("1");
+  const [e1rm, setE1rm] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(true);
+
+  // Auto-suggest 1RM from weight × reps using Epley until the user edits it manually
+  useEffect(() => {
+    if (!autoFilled) return;
+    const w = Number(weight);
+    const r = Number(reps);
+    if (w > 0 && r > 0) {
+      setE1rm(String(Math.round(estimate1RM(w, r))));
+    } else {
+      setE1rm("");
+    }
+  }, [weight, reps, autoFilled]);
+
+  async function handleSubmit() {
+    setError(null);
+    const parsed = testFormSchema.safeParse({
+      date,
+      weight: weight === "" ? NaN : Number(weight),
+      reps: reps === "" ? NaN : Number(reps),
+      e1rm: e1rm === "" ? NaN : Number(e1rm),
+      note: note.trim() || undefined,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSubmit({
+        date: new Date(parsed.data.date).toISOString(),
+        weight: parsed.data.weight,
+        reps: parsed.data.reps,
+        e1rm: parsed.data.e1rm,
+        note: parsed.data.note,
+      });
+      // Reset weight/reps/note but keep date for batch entry
+      setWeight("");
+      setReps("1");
+      setE1rm("");
+      setNote("");
+      setAutoFilled(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-2 text-[12px] text-muted-foreground">
+        Add a tested 1RM for <span className="font-medium text-foreground">{liftName}</span>.
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="col-span-2 text-[11px] text-muted-foreground">
+          Date *
+          <input
+            type="date"
+            value={date}
+            max={today}
+            onChange={(e) => setDate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[14px]"
+          />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          Weight (kg) *
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            min="0"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="e.g. 140"
+            className="mt-1 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[14px]"
+          />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          Reps *
+          <input
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="1"
+            value={reps}
+            onChange={(e) => setReps(e.target.value)}
+            placeholder="1"
+            className="mt-1 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[14px]"
+          />
+        </label>
+        <label className="col-span-2 text-[11px] text-muted-foreground">
+          Result — 1RM (kg) *
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            min="0"
+            value={e1rm}
+            onChange={(e) => {
+              setAutoFilled(false);
+              setE1rm(e.target.value);
+            }}
+            placeholder="Estimated from weight × reps"
+            className="mt-1 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[14px]"
+          />
+          {autoFilled && Number(weight) > 0 && Number(reps) > 0 && (
+            <span className="mt-1 block text-[10px] text-muted-foreground">Auto-estimated · edit to override</span>
+          )}
+        </label>
+        <label className="col-span-2 text-[11px] text-muted-foreground">
+          Note (optional)
+          <input
+            type="text"
+            value={note}
+            maxLength={200}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. PR attempt, gym, belt only…"
+            className="mt-1 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[14px]"
+          />
+        </label>
+      </div>
+      {error && (
+        <div className="mt-2 text-[12px] text-destructive">{error}</div>
+      )}
+      <button
+        onClick={handleSubmit}
+        disabled={busy}
+        className="mt-3 w-full rounded-lg bg-primary px-3 py-2.5 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+      >
+        {busy ? "Saving…" : "Add 1RM test"}
+      </button>
+    </div>
+  );
+}
+
+function Chart({ entries }: { entries: { date: string; e1rm: number; kind?: "amrap" | "test" }[] }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -165,11 +375,12 @@ function Chart({ entries }: { entries: { date: string; e1rm: number }[] }) {
     vals.forEach((v, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(v)) : ctx.lineTo(xOf(i), yOf(v)));
     ctx.stroke();
 
-    // dots
+    // dots — yellow ring for manual tests, blue for AMRAPs
     vals.forEach((v, i) => {
+      const isTest = entries[i]?.kind === "test";
       ctx.beginPath(); ctx.arc(xOf(i), yOf(v), 4, 0, Math.PI * 2);
       ctx.fillStyle = "#211f1d"; ctx.fill();
-      ctx.strokeStyle = "#7eb8f7"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = isTest ? "#e8b84b" : "#7eb8f7"; ctx.lineWidth = 2; ctx.stroke();
     });
 
     // last value

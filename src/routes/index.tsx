@@ -30,7 +30,8 @@ function isWorkoutDone(prog: Program, logs: WorkoutLog[], cycle: number, week: n
       l.cycle === cycle &&
       l.week === week &&
       l.day === day &&
-      l.type !== "restart",
+      l.type !== "restart" &&
+      l.type !== "test",
   );
 }
 
