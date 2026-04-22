@@ -331,7 +331,7 @@ function ManualTestForm({
   );
 }
 
-function Chart({ entries }: { entries: { date: string; e1rm: number }[] }) {
+function Chart({ entries }: { entries: { date: string; e1rm: number; kind?: "amrap" | "test" }[] }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -375,11 +375,12 @@ function Chart({ entries }: { entries: { date: string; e1rm: number }[] }) {
     vals.forEach((v, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(v)) : ctx.lineTo(xOf(i), yOf(v)));
     ctx.stroke();
 
-    // dots
+    // dots — yellow ring for manual tests, blue for AMRAPs
     vals.forEach((v, i) => {
+      const isTest = entries[i]?.kind === "test";
       ctx.beginPath(); ctx.arc(xOf(i), yOf(v), 4, 0, Math.PI * 2);
       ctx.fillStyle = "#211f1d"; ctx.fill();
-      ctx.strokeStyle = "#7eb8f7"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = isTest ? "#e8b84b" : "#7eb8f7"; ctx.lineWidth = 2; ctx.stroke();
     });
 
     // last value
