@@ -89,24 +89,18 @@ function ActiveHome({
   prog,
   logs,
   bw,
-  onAdvance,
-  onPrev,
   onJumpTo,
   onTrain,
 }: {
   prog: Program;
   logs: WorkoutLog[];
   bw: number;
-  onAdvance: () => void;
-  onPrev: () => void;
   onJumpTo: (week: number, day: number, isFutureSkip: boolean) => void;
   onTrain: () => void;
 }) {
   void bw;
   const lifts = buildLift1RMData(prog, logs);
   const showRMs = lifts.some((l) => l.latest);
-
-  const isFirst = prog.cycle === 1 && prog.week === 0 && prog.day === 0;
 
   return (
     <>
