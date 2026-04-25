@@ -323,6 +323,7 @@ function CycleGrid({
   logs: WorkoutLog[];
   onJumpTo: (week: number, day: number, isFutureSkip: boolean) => void;
 }) {
+  const navigate = useNavigate();
   const [viewedCycle, setViewedCycle] = useState(prog.cycle);
   const isCurrentCycleView = viewedCycle === prog.cycle;
   const isPastCycleView = viewedCycle < prog.cycle;
