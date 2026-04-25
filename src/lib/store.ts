@@ -188,7 +188,76 @@ export function useStore() {
   async function setBodyweight(bw: number) {
     if (!user) return;
     await supabase.from("user_settings").upsert({ user_id: user.id, bodyweight: bw });
+    // Recompute TM for any BW main lifts on the active program so historical
+    // assumption (TM = BW + addedLoad) stays consistent.
+    const active = state.programs.find((p) => p.active) ?? null;
+    if (active && active.main_lifts.some((l) => l.bodyweight)) {
+      const newMain = active.main_lifts.map((l) =>
+        l.bodyweight ? { ...l, tm: bw + (l.addedLoad ?? 0) } : l,
+      );
+      await supabase.from("programs").update({ main_lifts: newMain as never }).eq("id", active.id);
+    }
     setState((s) => ({ ...s, bodyweight: bw }));
+    await refresh();
+  }
+
+  async function addSkipMarker(input: {
+    program_id: string;
+    week: number;
+    day: number;
+    cycle: number;
+    note?: string | null;
+  }) {
+    if (!user) throw new Error("Not signed in");
+    // Remove any existing skip marker for this slot, then insert.
+    await supabase
+      .from("workout_logs")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("program_id", input.program_id)
+      .eq("lift_id", "skip")
+      .eq("week", input.week)
+      .eq("day", input.day)
+      .eq("cycle", input.cycle);
+    const ins = await supabase.from("workout_logs").insert({
+      user_id: user.id,
+      program_id: input.program_id,
+      lift_id: "skip",
+      lift_name: "—",
+      type: "skip",
+      bodyweight: false,
+      week: input.week,
+      day: input.day,
+      cycle: input.cycle,
+      sets: [] as never,
+      e1rm: null,
+      overload_earned: false,
+      note: input.note ?? null,
+      date: new Date().toISOString(),
+    });
+    if (ins.error) throw ins.error;
+    await refresh();
+  }
+
+  async function advanceCycle(programId: string, newTms: number[]) {
+    if (!user) return;
+    const existing = state.programs.find((p) => p.id === programId);
+    if (!existing) return;
+    const newMain = existing.main_lifts.map((l, i) => {
+      const v = newTms[i];
+      if (l.bodyweight) {
+        const added = typeof v === "number" && isFinite(v) ? Math.max(0, v - state.bodyweight) : (l.addedLoad ?? 0);
+        return { ...l, addedLoad: added, tm: state.bodyweight + added };
+      }
+      return { ...l, tm: typeof v === "number" && isFinite(v) ? v : l.tm };
+    });
+    const newCycle = existing.cycle + 1;
+    await insertRestartMarker(programId, newCycle, `Cycle ${existing.cycle} complete — TMs bumped`);
+    await supabase
+      .from("programs")
+      .update({ main_lifts: newMain as never, week: 0, day: 0, cycle: newCycle })
+      .eq("id", programId);
+    await refresh();
   }
 
   async function addManualTest(input: {
