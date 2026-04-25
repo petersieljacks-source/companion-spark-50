@@ -14,7 +14,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
-  const { activeProgram: prog, bodyweight, setBodyweight, updateProgram, deleteProgram, insertRestartMarker, loading } = useStore();
+  const { activeProgram: prog, programs, logs, bodyweight, setBodyweight, updateProgram, deleteProgram, insertRestartMarker, loading } = useStore();
   const { signOut, user } = useAuth();
   const [bwInput, setBwInput] = useState(String(bodyweight));
   const [restartOpen, setRestartOpen] = useState(false);
