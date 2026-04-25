@@ -369,6 +369,9 @@ function CycleGrid({
               viewedCycle={viewedCycle}
               isCurrentCycleView={isCurrentCycleView}
               onJumpTo={onJumpTo}
+              onReviewCell={(cycle, week, day) =>
+                navigate({ to: "/session", search: { week, day, cycle } })
+              }
             />
           ))}
         </div>
