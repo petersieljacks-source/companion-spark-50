@@ -301,6 +301,20 @@ function Settings() {
           </button>
         </>
       )}
+
+      <SectionLabel>Data</SectionLabel>
+      <Card>
+        <div className="mb-2.5 text-[13px] text-muted-foreground">
+          Export every workout log (all programs, all cycles) as a CSV file.
+        </div>
+        <button
+          onClick={exportCsv}
+          disabled={!logs.length}
+          className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium disabled:opacity-50"
+        >
+          Export logs (CSV)
+        </button>
+      </Card>
     </AppShell>
   );
 }
