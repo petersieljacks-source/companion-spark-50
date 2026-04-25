@@ -312,5 +312,7 @@ export function useStore() {
     setBodyweight,
     addManualTest,
     deleteLog,
+    addSkipMarker,
+    advanceCycle,
   };
 }
