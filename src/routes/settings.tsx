@@ -250,9 +250,9 @@ function Settings() {
 
           <button
             onClick={openRestart}
-            className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl border border-input bg-card py-3 text-[15px] font-medium"
+            className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl border border-warning/40 bg-card py-3 text-[15px] font-medium text-warning"
           >
-            ↺ Restart cycle
+            ↺ Start new cycle (manual restart)
           </button>
 
           {restartOpen && (
