@@ -28,7 +28,7 @@ export const Route = createFileRoute("/session")({
 
 function SessionPage() {
   const navigate = useNavigate();
-  const { activeProgram: prog, logs, bodyweight, loading } = useStore();
+  const { activeProgram: prog, logs, bodyweight, loading, addSkipMarker } = useStore();
   const search = Route.useSearch();
 
   if (loading) return <AppShell title="Session"><Empty>Loading…</Empty></AppShell>;
@@ -48,9 +48,24 @@ function SessionPage() {
 
   const title = `${WEEK_LABELS[week]} · ${DAY_LABELS[day]} · Cycle ${cycle}`;
 
-  function getLatest1RM(idx: number): number | null {
-    const log = [...logs].reverse().find((l) => l.lift_id === `main-${idx}` && l.program_id === prog!.id && l.e1rm);
+  function getLatest1RM(name: string): number | null {
+    const target = name.trim().toLowerCase();
+    const log = [...logs].reverse().find((l) => (l.lift_name ?? "").trim().toLowerCase() === target && l.program_id === prog!.id && l.e1rm);
     return log ? Number(log.e1rm) : null;
+  }
+
+  const isSkipped = logs.some((l) => l.program_id === prog.id && l.cycle === cycle && l.week === week && l.day === day && l.type === "skip");
+  const hasAnyLog = logs.some((l) => l.program_id === prog.id && l.cycle === cycle && l.week === week && l.day === day && (l.type === "main" || l.type === "supp"));
+
+  async function onSkip() {
+    if (hasAnyLog) {
+      toast.error("This day already has logged sets — delete them in History first.");
+      return;
+    }
+    if (!confirm(`Mark ${WEEK_LABELS[week]} · ${DAY_LABELS[day]} as skipped? This day will be marked as completed-skip on the cycle grid.`)) return;
+    await addSkipMarker({ program_id: prog!.id, week, day, cycle });
+    toast.success("Day marked as skipped");
+    navigate({ to: "/" });
   }
 
   // Build the search params to forward to the workout page when in review mode.
