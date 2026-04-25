@@ -73,11 +73,16 @@ function SessionPage() {
 
   return (
     <AppShell title={title} back={() => navigate({ to: "/" })}>
+      {isSkipped && (
+        <div className="mx-4 mt-3 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-[12px] text-warning">
+          This day is marked as skipped.
+        </div>
+      )}
       {prog.main_lifts.length > 0 && <SectionLabel>Main lifts — 5/3/1</SectionLabel>}
       {prog.main_lifts.map((l, i) => {
         const done = !!logs.find((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.week === week && lg.day === day && lg.cycle === cycle);
         const note = l.bodyweight ? `BW ${bodyweight} kg + ${l.addedLoad ?? 0} kg` : `TM: ${l.tm} kg`;
-        const rm = getLatest1RM(i);
+        const rm = getLatest1RM(l.name);
         const inner = (
           <Card className={done ? "opacity-50" : ""}>
             <div className="flex items-center justify-between">
@@ -92,11 +97,7 @@ function SessionPage() {
             </div>
           </Card>
         );
-        return done ? (
-          <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} search={forwardSearch} className="block">
-            {inner}
-          </Link>
-        ) : (
+        return (
           <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} search={forwardSearch} className="block">
             {inner}
           </Link>
@@ -122,16 +123,21 @@ function SessionPage() {
             </div>
           </Card>
         );
-        return done ? (
-          <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} search={forwardSearch} className="block">
-            {inner}
-          </Link>
-        ) : (
+        return (
           <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} search={forwardSearch} className="block">
             {inner}
           </Link>
         );
       })}
+
+      {!isSkipped && !hasAnyLog && (
+        <button
+          onClick={onSkip}
+          className="mx-4 my-4 block w-[calc(100%-2rem)] rounded-xl border border-input bg-card py-2.5 text-[13px] font-medium text-muted-foreground"
+        >
+          Skip this day
+        </button>
+      )}
     </AppShell>
   );
 }
