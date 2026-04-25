@@ -388,6 +388,7 @@ function WeekRow({
   viewedCycle,
   isCurrentCycleView,
   onJumpTo,
+  onReviewCell,
 }: {
   prog: Program;
   logs: WorkoutLog[];
@@ -396,6 +397,7 @@ function WeekRow({
   viewedCycle: number;
   isCurrentCycleView: boolean;
   onJumpTo: (week: number, day: number, isFutureSkip: boolean) => void;
+  onReviewCell: (cycle: number, week: number, day: number) => void;
 }) {
   return (
     <>
@@ -418,21 +420,16 @@ function WeekRow({
 
         const glyph = skipped ? "—" : done ? "✓" : isCurrent ? "●" : "·";
 
-        const navigateToCell = () => {
-          // Navigate to a (read-only/review) view for any cell in any cycle.
-          onJumpTo(week, day, false);
-        };
-
         const handleClick = () => {
           if (!isCurrentCycleView) {
-            // Past cycle browsing — navigate but cycle param needs to be the viewed one.
-            // Since onJumpTo uses activeProgram.cycle, we route directly:
-            // (this is fine because review mode passes search params)
-            // We'll fall through to navigate handler that uses viewedCycle.
-            navigateToViewedCell(viewedCycle, week, day);
+            // Past cycle browsing — review with explicit cycle.
+            onReviewCell(viewedCycle, week, day);
             return;
           }
-          if (isCurrent) return navigateToCell();
+          if (isCurrent) {
+            onJumpTo(week, day, false);
+            return;
+          }
           if (isFuture && !done && !skipped) {
             const ok = confirm(
               `Skip ahead to ${weekLabel} · ${DAY_LABELS[day]}? Workouts in between will be left unlogged.`,
@@ -441,7 +438,7 @@ function WeekRow({
             onJumpTo(week, day, true);
             return;
           }
-          navigateToCell();
+          onJumpTo(week, day, false);
         };
 
         return (
