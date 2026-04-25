@@ -41,6 +41,7 @@ function WorkoutPage() {
   const [currentWeek, setCurrentWeek] = useState(effectiveWeek);
   const [reps, setReps] = useState<number[]>([]);
   const [done, setDone] = useState<boolean[]>([]);
+  const repInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const lift = useMemo(() => {
     if (!prog) return null;
@@ -87,6 +88,36 @@ function WorkoutPage() {
 
   const mainLift = isMain && lift ? (lift as { name: string; bodyweight: boolean; tm: number; addedLoad?: number }) : null;
   const suppLift = !isMain && lift ? (lift as { name: string; bodyweight: boolean; weight: number }) : null;
+
+  // AMRAP PR for the same %TM (matched by lift_name across cycles).
+  const amrapPr = useMemo(() => {
+    if (!isMain || !prog || !lift) return null;
+    const s = WEEK_SCHEME[currentWeek];
+    const amrapDef = s.find((x) => typeof x.reps === "string");
+    if (!amrapDef) return null;
+    const liftName = lift.name.trim().toLowerCase();
+    let bestReps = 0;
+    let bestDate: string | null = null;
+    for (const lg of logs) {
+      if (lg.type !== "main") continue;
+      if ((lg.lift_name ?? "").trim().toLowerCase() !== liftName) continue;
+      // Don't count the row we're currently editing
+      if (existingLog && lg.id === existingLog.id) continue;
+      for (const set of lg.sets ?? []) {
+        if (set.amrap && Math.abs((set as SetLog).target ? 0 : 0) === 0) {
+          // match by percentage band — use weight/tm ratio if available; else use marked target
+        }
+        if (set.amrap && typeof set.target === "string") {
+          // Same week scheme means same %TM. Use the week scheme by reading lg.week.
+          if (lg.week === currentWeek && set.reps > bestReps) {
+            bestReps = set.reps;
+            bestDate = lg.date;
+          }
+        }
+      }
+    }
+    return bestReps > 0 ? { reps: bestReps, date: bestDate } : null;
+  }, [isMain, prog, lift, currentWeek, logs, existingLog]);
 
   function setRep(i: number, v: number) {
     setReps((arr) => arr.map((x, j) => j === i ? v : x));
@@ -145,6 +176,10 @@ function WorkoutPage() {
     } else {
       overload = sets.length === SUPP_SETS && sets.every((s) => s.reps >= 10);
     }
+    // P0 bug 2: preserve original date when editing an existing log; only stamp now for first save.
+    const saveDate = existingLog?.date ?? new Date().toISOString();
+    // P0 bug 1: in review mode, never let week-tab clicks rewrite the saved week.
+    const saveWeek = isReview ? effectiveWeek : currentWeek;
     try {
       await upsertLog({
         program_id: prog!.id,
@@ -152,13 +187,13 @@ function WorkoutPage() {
         lift_name: lift!.name,
         type: isMain ? "main" : "supp",
         bodyweight: lift!.bodyweight,
-        week: currentWeek,
+        week: saveWeek,
         day: effectiveDay,
         cycle: effectiveCycle,
         sets,
         e1rm,
         overload_earned: overload,
-        date: new Date().toISOString(),
+        date: saveDate,
       });
     } catch (e) {
       console.error("Save failed:", e);
@@ -168,14 +203,25 @@ function WorkoutPage() {
     if (!opts.silent) {
       toast.success("Workout saved");
       if (isMain && e1rm) {
+        const liftName = lift!.name.trim().toLowerCase();
         const prevBest = Math.max(
           0,
-          ...logs.filter((l) => l.lift_id === `main-${idx}` && l.e1rm).map((l) => Number(l.e1rm))
+          ...logs
+            .filter((l) => l.type !== "skip" && (l.lift_name ?? "").trim().toLowerCase() === liftName && l.e1rm)
+            .filter((l) => !existingLog || l.id !== existingLog.id)
+            .map((l) => Number(l.e1rm)),
         );
-        if (e1rm > prevBest) toast.success(`New estimated 1RM: ${e1rm} kg!`);
+        if (e1rm > prevBest) toast.success(`🎉 New estimated 1RM: ${e1rm} kg!`);
       }
-      // Apply supp overload bump only on explicit save (avoid bumping mid-typing).
-      if (!isMain && overload) {
+      // P1 #8: AMRAP rep PR celebration (same %TM band = same week scheme).
+      if (isMain) {
+        const a = sets.find((s) => s.amrap && s.reps > 0);
+        if (a && amrapPr && a.reps > amrapPr.reps) {
+          toast.success(`🏆 New rep PR for ${WEEK_LABELS[currentWeek]}: ${a.reps} reps!`);
+        }
+      }
+      // P0 bug 3: only apply supp overload bump on live (non-review) explicit save.
+      if (!isMain && overload && !isReview) {
         const supp = lift as { weight: number };
         const newW = roundTo((supp.weight ?? 0) + 2.5, prog!.round);
         const newSupp = prog!.supp_lifts.map((sl, i) => i === idx ? { ...sl, weight: newW } : sl);
@@ -255,7 +301,8 @@ function WorkoutPage() {
 
   const rmEst = (() => {
     if (!isMain) return null;
-    const log = [...logs].reverse().find((l) => l.lift_id === `main-${idx}` && l.program_id === prog.id && l.e1rm);
+    const liftName = lift.name.trim().toLowerCase();
+    const log = [...logs].reverse().find((l) => (l.lift_name ?? "").trim().toLowerCase() === liftName && l.program_id === prog.id && l.e1rm);
     return log ? Number(log.e1rm) : null;
   })();
 
@@ -266,17 +313,38 @@ function WorkoutPage() {
     <AppShell title={lift.name} hideTabBar back={() => navigate({ to: "/session", search: navSearch })}>
       {isMain && (
         <div className="flex gap-1.5 px-4 pt-3">
-          {WEEK_LABELS.map((l, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentWeek(i)}
-              className={`flex-1 rounded-lg border border-border px-2 py-2 text-[13px] ${
-                i === currentWeek ? "border-foreground bg-primary font-semibold text-primary-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {l}
-            </button>
-          ))}
+          {WEEK_LABELS.map((l, i) => {
+            const active = i === currentWeek;
+            const locked = isReview && i !== effectiveWeek;
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  if (locked) {
+                    toast.error("Reviewing a past workout — week is locked.");
+                    return;
+                  }
+                  setCurrentWeek(i);
+                }}
+                aria-disabled={locked}
+                className={`flex-1 rounded-lg border border-border px-2 py-2 text-[13px] ${
+                  active
+                    ? "border-foreground bg-primary font-semibold text-primary-foreground"
+                    : locked
+                      ? "text-muted-foreground/50"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {l}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {isReview && (
+        <div className="mx-4 mt-2 rounded-lg border border-info bg-info-bg px-3 py-1.5 text-[12px] text-info">
+          Reviewing past workout · edits keep the original date.
         </div>
       )}
 
@@ -339,16 +407,36 @@ function WorkoutPage() {
                     : (lift.bodyweight ? `Total: ${totalKg} kg` : "8–10 reps")}
                 </div>
                 {isAmrap && <div className="text-[11px] font-semibold text-warning">go for max</div>}
+                {isAmrap && amrapPr && (
+                  <div className="text-[11px] text-muted-foreground">
+                    Best: {amrapPr.reps} reps
+                    {amrapPr.date ? ` · ${new Date(amrapPr.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                  </div>
+                )}
               </div>
               <div>
                 <input
+                  ref={(el) => { repInputRefs.current[i] = el; }}
                   type="number"
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  enterKeyHint={i === numSets - 1 ? "done" : "next"}
                   min={0}
                   value={reps[i] ?? 0}
                   onFocus={(e) => e.currentTarget.select()}
                   onChange={(e) => setRep(i, parseInt(e.target.value) || 0)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const next = repInputRefs.current[i + 1];
+                      if (next) {
+                        next.focus();
+                        next.select();
+                      } else {
+                        (e.currentTarget as HTMLInputElement).blur();
+                      }
+                    }
+                  }}
                   className={`w-full rounded-lg border bg-input-bg px-2 py-1.5 text-center text-sm ${
                     isCompleted ? "border-success bg-success-bg" : "border-input"
                   }`}
