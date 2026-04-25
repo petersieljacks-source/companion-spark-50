@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/session")({
 
 function SessionPage() {
   const navigate = useNavigate();
-  const { activeProgram: prog, logs, bodyweight, loading } = useStore();
+  const { activeProgram: prog, logs, bodyweight, loading, addSkipMarker } = useStore();
   const search = Route.useSearch();
 
   if (loading) return <AppShell title="Session"><Empty>Loading…</Empty></AppShell>;
@@ -47,9 +48,24 @@ function SessionPage() {
 
   const title = `${WEEK_LABELS[week]} · ${DAY_LABELS[day]} · Cycle ${cycle}`;
 
-  function getLatest1RM(idx: number): number | null {
-    const log = [...logs].reverse().find((l) => l.lift_id === `main-${idx}` && l.program_id === prog!.id && l.e1rm);
+  function getLatest1RM(name: string): number | null {
+    const target = name.trim().toLowerCase();
+    const log = [...logs].reverse().find((l) => (l.lift_name ?? "").trim().toLowerCase() === target && l.program_id === prog!.id && l.e1rm);
     return log ? Number(log.e1rm) : null;
+  }
+
+  const isSkipped = logs.some((l) => l.program_id === prog.id && l.cycle === cycle && l.week === week && l.day === day && l.type === "skip");
+  const hasAnyLog = logs.some((l) => l.program_id === prog.id && l.cycle === cycle && l.week === week && l.day === day && (l.type === "main" || l.type === "supp"));
+
+  async function onSkip() {
+    if (hasAnyLog) {
+      toast.error("This day already has logged sets — delete them in History first.");
+      return;
+    }
+    if (!confirm(`Mark ${WEEK_LABELS[week]} · ${DAY_LABELS[day]} as skipped? This day will be marked as completed-skip on the cycle grid.`)) return;
+    await addSkipMarker({ program_id: prog!.id, week, day, cycle });
+    toast.success("Day marked as skipped");
+    navigate({ to: "/" });
   }
 
   // Build the search params to forward to the workout page when in review mode.
@@ -57,11 +73,16 @@ function SessionPage() {
 
   return (
     <AppShell title={title} back={() => navigate({ to: "/" })}>
+      {isSkipped && (
+        <div className="mx-4 mt-3 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-[12px] text-warning">
+          This day is marked as skipped.
+        </div>
+      )}
       {prog.main_lifts.length > 0 && <SectionLabel>Main lifts — 5/3/1</SectionLabel>}
       {prog.main_lifts.map((l, i) => {
         const done = !!logs.find((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.week === week && lg.day === day && lg.cycle === cycle);
         const note = l.bodyweight ? `BW ${bodyweight} kg + ${l.addedLoad ?? 0} kg` : `TM: ${l.tm} kg`;
-        const rm = getLatest1RM(i);
+        const rm = getLatest1RM(l.name);
         const inner = (
           <Card className={done ? "opacity-50" : ""}>
             <div className="flex items-center justify-between">
@@ -76,11 +97,7 @@ function SessionPage() {
             </div>
           </Card>
         );
-        return done ? (
-          <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} search={forwardSearch} className="block">
-            {inner}
-          </Link>
-        ) : (
+        return (
           <Link key={i} to="/workout/$type/$idx" params={{ type: "main", idx: String(i) }} search={forwardSearch} className="block">
             {inner}
           </Link>
@@ -106,16 +123,21 @@ function SessionPage() {
             </div>
           </Card>
         );
-        return done ? (
-          <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} search={forwardSearch} className="block">
-            {inner}
-          </Link>
-        ) : (
+        return (
           <Link key={i} to="/workout/$type/$idx" params={{ type: "supp", idx: String(i) }} search={forwardSearch} className="block">
             {inner}
           </Link>
         );
       })}
+
+      {!isSkipped && !hasAnyLog && (
+        <button
+          onClick={onSkip}
+          className="mx-4 my-4 block w-[calc(100%-2rem)] rounded-xl border border-input bg-card py-2.5 text-[13px] font-medium text-muted-foreground"
+        >
+          Skip this day
+        </button>
+      )}
     </AppShell>
   );
 }

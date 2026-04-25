@@ -20,16 +20,19 @@ function Performance() {
   }
 
   const lifts = prog.main_lifts.map((l, i) => {
+    const target = l.name.trim().toLowerCase();
+    const matches = (lg: typeof logs[number]) =>
+      (lg.lift_name ?? "").trim().toLowerCase() === target && lg.program_id === prog.id;
     const liftLogs = logs
-      .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.e1rm)
+      .filter((lg) => matches(lg) && lg.e1rm)
       .sort((a, b) => a.date.localeCompare(b.date));
     const amrapLogs = logs
-      .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.type !== "test" && (lg.sets ?? []).some((s) => s.amrap && s.reps > 0))
+      .filter((lg) => matches(lg) && lg.type !== "test" && (lg.sets ?? []).some((s) => s.amrap && s.reps > 0))
       .sort((a, b) => a.date.localeCompare(b.date));
     const testLogs = logs
-      .filter((lg) => lg.lift_id === `main-${i}` && lg.program_id === prog.id && lg.type === "test")
+      .filter((lg) => matches(lg) && lg.type === "test")
       .sort((a, b) => a.date.localeCompare(b.date));
-    return { name: l.name, logs: liftLogs, amrapLogs, testLogs };
+    return { name: l.name, idx: i, logs: liftLogs, amrapLogs, testLogs };
   });
 
   const safeIdx = liftIdx >= lifts.length ? 0 : liftIdx;

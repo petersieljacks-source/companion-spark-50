@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
 import { useAuth } from "@/lib/auth";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import type { MainLift, SuppLift } from "@/lib/531";
 
 export const Route = createFileRoute("/settings")({
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
-  const { activeProgram: prog, bodyweight, setBodyweight, updateProgram, deleteProgram, insertRestartMarker, loading } = useStore();
+  const { activeProgram: prog, programs, logs, bodyweight, setBodyweight, updateProgram, deleteProgram, insertRestartMarker, loading } = useStore();
   const { signOut, user } = useAuth();
   const [bwInput, setBwInput] = useState(String(bodyweight));
   const [restartOpen, setRestartOpen] = useState(false);
@@ -84,6 +85,36 @@ function Settings() {
     const newSupp: SuppLift[] = prog.supp_lifts.map((x, j) => j === i ? { ...x, weight: v } : x);
     await updateProgram(prog.id, { supp_lifts: newSupp });
     setSuppEdits((m) => { const c = { ...m }; delete c[i]; return c; });
+  }
+
+  function exportCsv() {
+    const programById = new Map(programs.map((p) => [p.id, p]));
+    const rows: unknown[][] = [];
+    for (const log of logs) {
+      const p = programById.get(log.program_id);
+      const programName = p?.name ?? "(deleted)";
+      const week = (log.type === "main" || log.type === "supp" || log.type === "skip") ? (WEEK_LABELS[log.week] ?? "") : "";
+      const day = (log.type === "main" || log.type === "supp" || log.type === "skip") ? (DAY_LABELS[log.day] ?? "") : "";
+      if (log.type === "restart" || log.type === "skip") {
+        rows.push([log.date, programName, log.cycle, week, day, log.lift_name, log.type, "", "", "", "", "", "", log.note ?? ""]);
+        continue;
+      }
+      const sets = log.sets ?? [];
+      if (!sets.length) {
+        rows.push([log.date, programName, log.cycle, week, day, log.lift_name, log.type, log.bodyweight ? "yes" : "no", "", "", "", "", log.e1rm ?? "", log.note ?? ""]);
+        continue;
+      }
+      sets.forEach((s, i) => {
+        rows.push([log.date, programName, log.cycle, week, day, log.lift_name, log.type, log.bodyweight ? "yes" : "no", i + 1, s.weight, s.reps, s.target ?? "", log.e1rm ?? "", log.note ?? ""]);
+      });
+    }
+    const csv = toCsv(
+      ["date", "program", "cycle", "week", "day", "lift", "type", "bodyweight", "set", "weight_kg", "reps", "target", "e1rm", "note"],
+      rows,
+    );
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`531-logs-${stamp}.csv`, csv);
+    toast.success("Exported logs to CSV");
   }
 
   return (
@@ -219,9 +250,9 @@ function Settings() {
 
           <button
             onClick={openRestart}
-            className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl border border-input bg-card py-3 text-[15px] font-medium"
+            className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl border border-warning/40 bg-card py-3 text-[15px] font-medium text-warning"
           >
-            ↺ Restart cycle
+            ↺ Start new cycle (manual restart)
           </button>
 
           {restartOpen && (
@@ -270,6 +301,20 @@ function Settings() {
           </button>
         </>
       )}
+
+      <SectionLabel>Data</SectionLabel>
+      <Card>
+        <div className="mb-2.5 text-[13px] text-muted-foreground">
+          Export every workout log (all programs, all cycles) as a CSV file.
+        </div>
+        <button
+          onClick={exportCsv}
+          disabled={!logs.length}
+          className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium disabled:opacity-50"
+        >
+          Export logs (CSV)
+        </button>
+      </Card>
     </AppShell>
   );
 }
