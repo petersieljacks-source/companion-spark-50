@@ -456,9 +456,3 @@ function WeekRow({
     </>
   );
 }
-
-// Direct review-mode navigation that lets us pass a specific cycle (used for browsing past cycles).
-function navigateToViewedCell(cycle: number, week: number, day: number) {
-  const url = `/session?week=${week}&day=${day}&cycle=${cycle}`;
-  window.location.assign(url);
-}
