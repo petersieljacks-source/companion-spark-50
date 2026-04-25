@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_LABELS } from "@/lib/531";
+import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
 import { useAuth } from "@/lib/auth";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import type { MainLift, SuppLift } from "@/lib/531";
 
 export const Route = createFileRoute("/settings")({
