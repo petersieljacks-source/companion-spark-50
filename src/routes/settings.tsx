@@ -87,6 +87,36 @@ function Settings() {
     setSuppEdits((m) => { const c = { ...m }; delete c[i]; return c; });
   }
 
+  function exportCsv() {
+    const programById = new Map(programs.map((p) => [p.id, p]));
+    const rows: unknown[][] = [];
+    for (const log of logs) {
+      const p = programById.get(log.program_id);
+      const programName = p?.name ?? "(deleted)";
+      const week = (log.type === "main" || log.type === "supp" || log.type === "skip") ? (WEEK_LABELS[log.week] ?? "") : "";
+      const day = (log.type === "main" || log.type === "supp" || log.type === "skip") ? (DAY_LABELS[log.day] ?? "") : "";
+      if (log.type === "restart" || log.type === "skip") {
+        rows.push([log.date, programName, log.cycle, week, day, log.lift_name, log.type, "", "", "", "", "", "", log.note ?? ""]);
+        continue;
+      }
+      const sets = log.sets ?? [];
+      if (!sets.length) {
+        rows.push([log.date, programName, log.cycle, week, day, log.lift_name, log.type, log.bodyweight ? "yes" : "no", "", "", "", "", log.e1rm ?? "", log.note ?? ""]);
+        continue;
+      }
+      sets.forEach((s, i) => {
+        rows.push([log.date, programName, log.cycle, week, day, log.lift_name, log.type, log.bodyweight ? "yes" : "no", i + 1, s.weight, s.reps, s.target ?? "", log.e1rm ?? "", log.note ?? ""]);
+      });
+    }
+    const csv = toCsv(
+      ["date", "program", "cycle", "week", "day", "lift", "type", "bodyweight", "set", "weight_kg", "reps", "target", "e1rm", "note"],
+      rows,
+    );
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`531-logs-${stamp}.csv`, csv);
+    toast.success("Exported logs to CSV");
+  }
+
   return (
     <AppShell title="Settings">
       <SectionLabel>Account</SectionLabel>
