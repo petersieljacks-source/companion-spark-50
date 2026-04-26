@@ -15,14 +15,79 @@ function Performance() {
   const [liftIdx, setLiftIdx] = useState(0);
 
   if (loading) return <AppShell title="Performance"><Empty>Loading…</Empty></AppShell>;
-  if (!prog || !prog.main_lifts.length) {
-    return <AppShell title="Performance"><Empty>No main lifts yet.</Empty></AppShell>;
+
+  // Build "lifts" tab list. For 5/3/1 use prog.main_lifts (preserves order).
+  // For custom programs use the active program's exercises across sessions.
+  // For nothing-active fall back to the union of all lift names ever logged.
+  type LiftEntry = {
+    name: string;
+    idx: number;
+    logs: typeof logs;
+    amrapLogs: typeof logs;
+    testLogs: typeof logs;
+  };
+
+  const allLogsByLiftName = useMemo(() => {
+    const m = new Map<string, typeof logs>();
+    for (const l of logs) {
+      if (!l.lift_name || l.lift_name === "—") continue;
+      if (l.type === "restart" || l.type === "skip") continue;
+      const key = l.lift_name.trim();
+      if (!m.has(key)) m.set(key, []);
+      m.get(key)!.push(l);
+    }
+    return m;
+  }, [logs]);
+
+  // All-time PR rows: every lift name that ever produced an e1RM.
+  const allTimePRs = useMemo(() => {
+    const rows: { name: string; pr: number; date: string }[] = [];
+    for (const [name, ls] of allLogsByLiftName) {
+      let best = 0;
+      let bestDate = "";
+      for (const l of ls) {
+        if (l.e1rm && Number(l.e1rm) > best) {
+          best = Number(l.e1rm);
+          bestDate = l.date;
+        }
+      }
+      if (best > 0) rows.push({ name, pr: best, date: bestDate });
+    }
+    rows.sort((a, b) => b.pr - a.pr);
+    return rows;
+  }, [allLogsByLiftName]);
+
+  // Build the focus tab list.
+  let liftSources: { name: string; idx: number }[] = [];
+  if (prog && prog.kind === "custom") {
+    const seen = new Set<string>();
+    (prog.sessions ?? []).forEach((s) => {
+      s.exercises.forEach((ex) => {
+        const key = ex.name.trim();
+        if (!seen.has(key)) {
+          seen.add(key);
+          liftSources.push({ name: ex.name, idx: liftSources.length });
+        }
+      });
+    });
+  } else if (prog && prog.main_lifts.length) {
+    liftSources = prog.main_lifts.map((l, i) => ({ name: l.name, idx: i }));
+  } else {
+    // Fallback: every lift ever logged.
+    liftSources = Array.from(allLogsByLiftName.keys()).map((name, i) => ({ name, idx: i }));
   }
 
-  const lifts = prog.main_lifts.map((l, i) => {
-    const target = l.name.trim().toLowerCase();
-    const matches = (lg: typeof logs[number]) =>
-      (lg.lift_name ?? "").trim().toLowerCase() === target && lg.program_id === prog.id;
+  if (!liftSources.length) {
+    return (
+      <AppShell title="Performance">
+        <Empty>No lifts logged yet.</Empty>
+      </AppShell>
+    );
+  }
+
+  const lifts: LiftEntry[] = liftSources.map((src) => {
+    const target = src.name.trim().toLowerCase();
+    const matches = (lg: typeof logs[number]) => (lg.lift_name ?? "").trim().toLowerCase() === target;
     const liftLogs = logs
       .filter((lg) => matches(lg) && lg.e1rm)
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -32,7 +97,7 @@ function Performance() {
     const testLogs = logs
       .filter((lg) => matches(lg) && lg.type === "test")
       .sort((a, b) => a.date.localeCompare(b.date));
-    return { name: l.name, idx: i, logs: liftLogs, amrapLogs, testLogs };
+    return { name: src.name, idx: src.idx, logs: liftLogs, amrapLogs, testLogs };
   });
 
   const safeIdx = liftIdx >= lifts.length ? 0 : liftIdx;
