@@ -144,24 +144,28 @@ function Performance() {
         )}
       </Card>
 
-      <SectionLabel>Manual 1RM tests</SectionLabel>
-      <Card>
-        <ManualTestForm
-          liftName={lift.name}
-          onSubmit={async ({ date, weight, reps, e1rm, note }) => {
-            await addManualTest({
-              program_id: prog.id,
-              lift_idx: safeIdx,
-              lift_name: lift.name,
-              date,
-              weight,
-              reps,
-              e1rm,
-              note,
-            });
-          }}
-        />
-      </Card>
+      {prog && (
+        <>
+          <SectionLabel>Manual 1RM tests</SectionLabel>
+          <Card>
+            <ManualTestForm
+              liftName={lift.name}
+              onSubmit={async ({ date, weight, reps, e1rm, note }) => {
+                await addManualTest({
+                  program_id: prog.id,
+                  lift_idx: typeof lift.idx === "number" ? lift.idx : 0,
+                  lift_name: lift.name,
+                  date,
+                  weight,
+                  reps,
+                  e1rm,
+                  note,
+                });
+              }}
+            />
+          </Card>
+        </>
+      )}
       {lift.testLogs.length > 0 && (
         <Card className="!p-0 mt-2">
           <div className="grid grid-cols-[1fr_72px_44px_72px_32px] border-b border-border text-[11px] text-muted-foreground">
