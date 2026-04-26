@@ -1,7 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import type { Program, WorkoutLog, MainLift, SuppLift } from "@/lib/531";
+import type {
+  Program,
+  WorkoutLog,
+  MainLift,
+  SuppLift,
+  CustomSession,
+  CustomExercise,
+  ProgramKind,
+  ProgressionRule,
+} from "@/lib/531";
 
 type StoreState = {
   programs: Program[];
