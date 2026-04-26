@@ -66,10 +66,10 @@ function Home() {
   const navigate = useNavigate();
   const { activeProgram, logs, loading, updateProgram, advanceCycle, bodyweight } = useStore();
 
-  if (loading) return <AppShell title="5/3/1 Training"><Empty>Loading…</Empty></AppShell>;
+  if (loading) return <AppShell title="BØFSHOWET"><Empty>Loading…</Empty></AppShell>;
 
   return (
-    <AppShell title="5/3/1 Training">
+    <AppShell title="BØFSHOWET">
       <div className="flex justify-end gap-2 px-4 pt-2">
         {activeProgram && (
           <Link
