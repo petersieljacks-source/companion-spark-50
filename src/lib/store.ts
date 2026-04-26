@@ -57,7 +57,7 @@ export function useStore() {
     if (user) refresh();
   }, [user, refresh]);
 
-  const activeProgram = state.programs.find((p) => p.active) ?? null;
+  const activeProgram = state.programs.find((p) => p.active && !p.archived) ?? null;
 
   // ── Mutations ──
   async function createProgram(p: {
@@ -66,6 +66,10 @@ export function useStore() {
     round: number;
     main_lifts: MainLift[];
     supp_lifts: SuppLift[];
+    kind?: ProgramKind;
+    sessions?: CustomSession[];
+    default_rule?: ProgressionRule;
+    default_increment?: number;
   }) {
     if (!user) return;
     // Deactivate existing
@@ -75,8 +79,12 @@ export function useStore() {
       name: p.name,
       variant: p.variant,
       round: p.round,
+      kind: p.kind ?? "wendler531",
       main_lifts: p.main_lifts as never,
       supp_lifts: p.supp_lifts as never,
+      sessions: (p.sessions ?? []) as never,
+      default_rule: p.default_rule ?? "linear",
+      default_increment: p.default_increment ?? 2.5,
       week: 0,
       cycle: 1,
       active: true,
