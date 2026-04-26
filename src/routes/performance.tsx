@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, Empty } from "@/components/ui-bits";
