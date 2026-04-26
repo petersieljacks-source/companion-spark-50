@@ -248,12 +248,14 @@ function Settings() {
             </Card>
           )}
 
-          <button
-            onClick={openRestart}
-            className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl border border-warning/40 bg-card py-3 text-[15px] font-medium text-warning"
-          >
-            ↺ Start new cycle (manual restart)
-          </button>
+          {prog.kind !== "custom" && (
+            <button
+              onClick={openRestart}
+              className="mx-4 my-3 block w-[calc(100%-2rem)] rounded-xl border border-warning/40 bg-card py-3 text-[15px] font-medium text-warning"
+            >
+              ↺ Start new cycle (manual restart)
+            </button>
+          )}
 
           {restartOpen && (
             <div className="mx-4">
