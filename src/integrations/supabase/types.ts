@@ -17,13 +17,18 @@ export type Database = {
       programs: {
         Row: {
           active: boolean
+          archived: boolean
           created_at: string
           cycle: number
           day: number
+          default_increment: number
+          default_rule: string
           id: string
+          kind: string
           main_lifts: Json
           name: string
           round: number
+          sessions: Json
           supp_lifts: Json
           updated_at: string
           user_id: string
@@ -32,13 +37,18 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          archived?: boolean
           created_at?: string
           cycle?: number
           day?: number
+          default_increment?: number
+          default_rule?: string
           id?: string
+          kind?: string
           main_lifts?: Json
           name: string
           round?: number
+          sessions?: Json
           supp_lifts?: Json
           updated_at?: string
           user_id: string
@@ -47,13 +57,18 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          archived?: boolean
           created_at?: string
           cycle?: number
           day?: number
+          default_increment?: number
+          default_rule?: string
           id?: string
+          kind?: string
           main_lifts?: Json
           name?: string
           round?: number
+          sessions?: Json
           supp_lifts?: Json
           updated_at?: string
           user_id?: string
