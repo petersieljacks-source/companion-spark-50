@@ -11,7 +11,7 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in — 5/3/1 Training" },
+      { title: "Sign in — BØFSHOWET" },
       { name: "description", content: "Sign in or create an account to track your 5/3/1 program across devices." },
     ],
   }),
@@ -45,7 +45,7 @@ function AuthPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-center text-2xl font-semibold tracking-tight">5/3/1 Training</h1>
+        <h1 className="text-center text-2xl font-semibold tracking-tight">BØFSHOWET</h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">
           {mode === "signin" ? "Sign in to your account" : "Create an account"}
         </p>
