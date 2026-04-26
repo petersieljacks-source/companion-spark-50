@@ -1,7 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import type { Program, WorkoutLog, MainLift, SuppLift } from "@/lib/531";
+import type {
+  Program,
+  WorkoutLog,
+  MainLift,
+  SuppLift,
+  CustomSession,
+  CustomExercise,
+  ProgramKind,
+  ProgressionRule,
+} from "@/lib/531";
 
 type StoreState = {
   programs: Program[];
@@ -48,7 +57,7 @@ export function useStore() {
     if (user) refresh();
   }, [user, refresh]);
 
-  const activeProgram = state.programs.find((p) => p.active) ?? null;
+  const activeProgram = state.programs.find((p) => p.active && !p.archived) ?? null;
 
   // ── Mutations ──
   async function createProgram(p: {
@@ -57,6 +66,10 @@ export function useStore() {
     round: number;
     main_lifts: MainLift[];
     supp_lifts: SuppLift[];
+    kind?: ProgramKind;
+    sessions?: CustomSession[];
+    default_rule?: ProgressionRule;
+    default_increment?: number;
   }) {
     if (!user) return;
     // Deactivate existing
@@ -66,8 +79,12 @@ export function useStore() {
       name: p.name,
       variant: p.variant,
       round: p.round,
+      kind: p.kind ?? "wendler531",
       main_lifts: p.main_lifts as never,
       supp_lifts: p.supp_lifts as never,
+      sessions: (p.sessions ?? []) as never,
+      default_rule: p.default_rule ?? "linear",
+      default_increment: p.default_increment ?? 2.5,
       week: 0,
       cycle: 1,
       active: true,
@@ -299,6 +316,44 @@ export function useStore() {
     await refresh();
   }
 
+  // ── Custom-program helpers ──
+
+  /** Replace one exercise inside a custom program's session. */
+  async function updateCustomExercise(programId: string, sessionId: string, exercise: CustomExercise) {
+    if (!user) return;
+    const prog = state.programs.find((p) => p.id === programId);
+    if (!prog) return;
+    const sessions = (prog.sessions ?? []).map((s) =>
+      s.id === sessionId
+        ? { ...s, exercises: s.exercises.map((e) => (e.id === exercise.id ? exercise : e)) }
+        : s,
+    );
+    await supabase.from("programs").update({ sessions: sessions as never }).eq("id", programId);
+    await refresh();
+  }
+
+  /** Bump the run counter on a custom session (used as `cycle` on logs to dedupe rows). */
+  async function bumpCustomSessionRuns(programId: string, sessionId: string): Promise<number> {
+    const prog = state.programs.find((p) => p.id === programId);
+    if (!prog) return 1;
+    const sessions = (prog.sessions ?? []).map((s) =>
+      s.id === sessionId ? { ...s, runs: (s.runs ?? 0) + 1 } : s,
+    );
+    const target = sessions.find((s) => s.id === sessionId);
+    await supabase.from("programs").update({ sessions: sessions as never }).eq("id", programId);
+    await refresh();
+    return target?.runs ?? 1;
+  }
+
+  /** Soft-archive: keep program + logs, just hide it from the active flow. */
+  async function archiveProgram(id: string) {
+    if (!user) return;
+    await supabase.from("programs").update({ archived: true, active: false }).eq("id", id);
+    await refresh();
+  }
+
+  /** Hard delete a single custom-session log (preserves PR history elsewhere). */
+
   return {
     ...state,
     activeProgram,
@@ -307,6 +362,7 @@ export function useStore() {
     updateProgram,
     editProgram,
     deleteProgram,
+    archiveProgram,
     upsertLog,
     insertRestartMarker,
     setBodyweight,
@@ -314,5 +370,7 @@ export function useStore() {
     deleteLog,
     addSkipMarker,
     advanceCycle,
+    updateCustomExercise,
+    bumpCustomSessionRuns,
   };
 }

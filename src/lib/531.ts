@@ -34,14 +34,47 @@ export type SetLog = {
   done: boolean;
 };
 
+export type ProgramKind = "wendler531" | "custom";
+
+export type ProgressionRule = "linear" | "double" | "percentage" | "manual";
+
+export type CustomExercise = {
+  id: string;
+  name: string;
+  bodyweight: boolean;
+  sets: number;
+  reps_low: number;
+  reps_high: number; // === reps_low for fixed reps
+  weight: number; // current working added weight (kg) — for BW lifts this is added load on top of bodyweight
+  one_rm?: number | null;
+  pct?: number | null;
+  rule: ProgressionRule;
+  increment: number;
+  amrap_last: boolean;
+  note?: string | null;
+};
+
+export type CustomSession = {
+  id: string;
+  name: string;
+  exercises: CustomExercise[];
+  /** Number of times this session has been performed (used as `cycle` in logs). */
+  runs?: number;
+};
+
 export type Program = {
   id: string;
   user_id: string;
   name: string;
   variant: string;
   round: number;
+  kind?: ProgramKind;
   main_lifts: MainLift[];
   supp_lifts: SuppLift[];
+  sessions?: CustomSession[];
+  default_rule?: ProgressionRule;
+  default_increment?: number;
+  archived?: boolean;
   week: number;
   day: number;
   cycle: number;
@@ -56,7 +89,7 @@ export type WorkoutLog = {
   program_id: string;
   lift_id: string;
   lift_name: string;
-  type: "main" | "supp" | "restart" | "test" | "skip";
+  type: "main" | "supp" | "restart" | "test" | "skip" | "custom";
   bodyweight: boolean;
   week: number;
   day: number;

@@ -16,6 +16,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProgramNewRouteImport } from './routes/program.new'
+import { Route as CustomSessionSessionIdRouteImport } from './routes/custom-session.$sessionId'
 import { Route as WorkoutTypeIdxRouteImport } from './routes/workout.$type.$idx'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -53,6 +54,11 @@ const ProgramNewRoute = ProgramNewRouteImport.update({
   path: '/program/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomSessionSessionIdRoute = CustomSessionSessionIdRouteImport.update({
+  id: '/custom-session/$sessionId',
+  path: '/custom-session/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorkoutTypeIdxRoute = WorkoutTypeIdxRouteImport.update({
   id: '/workout/$type/$idx',
   path: '/workout/$type/$idx',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/performance': typeof PerformanceRoute
   '/session': typeof SessionRoute
   '/settings': typeof SettingsRoute
+  '/custom-session/$sessionId': typeof CustomSessionSessionIdRoute
   '/program/new': typeof ProgramNewRoute
   '/workout/$type/$idx': typeof WorkoutTypeIdxRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/performance': typeof PerformanceRoute
   '/session': typeof SessionRoute
   '/settings': typeof SettingsRoute
+  '/custom-session/$sessionId': typeof CustomSessionSessionIdRoute
   '/program/new': typeof ProgramNewRoute
   '/workout/$type/$idx': typeof WorkoutTypeIdxRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/performance': typeof PerformanceRoute
   '/session': typeof SessionRoute
   '/settings': typeof SettingsRoute
+  '/custom-session/$sessionId': typeof CustomSessionSessionIdRoute
   '/program/new': typeof ProgramNewRoute
   '/workout/$type/$idx': typeof WorkoutTypeIdxRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/session'
     | '/settings'
+    | '/custom-session/$sessionId'
     | '/program/new'
     | '/workout/$type/$idx'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/session'
     | '/settings'
+    | '/custom-session/$sessionId'
     | '/program/new'
     | '/workout/$type/$idx'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/session'
     | '/settings'
+    | '/custom-session/$sessionId'
     | '/program/new'
     | '/workout/$type/$idx'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   PerformanceRoute: typeof PerformanceRoute
   SessionRoute: typeof SessionRoute
   SettingsRoute: typeof SettingsRoute
+  CustomSessionSessionIdRoute: typeof CustomSessionSessionIdRoute
   ProgramNewRoute: typeof ProgramNewRoute
   WorkoutTypeIdxRoute: typeof WorkoutTypeIdxRoute
 }
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProgramNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/custom-session/$sessionId': {
+      id: '/custom-session/$sessionId'
+      path: '/custom-session/$sessionId'
+      fullPath: '/custom-session/$sessionId'
+      preLoaderRoute: typeof CustomSessionSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/workout/$type/$idx': {
       id: '/workout/$type/$idx'
       path: '/workout/$type/$idx'
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerformanceRoute: PerformanceRoute,
   SessionRoute: SessionRoute,
   SettingsRoute: SettingsRoute,
+  CustomSessionSessionIdRoute: CustomSessionSessionIdRoute,
   ProgramNewRoute: ProgramNewRoute,
   WorkoutTypeIdxRoute: WorkoutTypeIdxRoute,
 }

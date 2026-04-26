@@ -19,7 +19,7 @@ export function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-export function LiftBadge({ kind }: { kind: "main" | "supp" | "bw" | "test" }) {
+export function LiftBadge({ kind }: { kind: "main" | "supp" | "bw" | "test" | "custom" }) {
   const cls =
     kind === "main"
       ? "bg-info-bg text-info"
@@ -27,8 +27,14 @@ export function LiftBadge({ kind }: { kind: "main" | "supp" | "bw" | "test" }) {
       ? "bg-supp-bg text-supp"
       : kind === "test"
       ? "bg-warning-bg text-warning"
+      : kind === "custom"
+      ? "bg-supp-bg text-supp"
       : "bg-bw-bg text-bw";
-  const label = kind === "main" ? "5/3/1" : kind === "supp" ? "8–10" : kind === "test" ? "1RM" : "BW";
+  const label =
+    kind === "main" ? "5/3/1" :
+    kind === "supp" ? "8–10" :
+    kind === "test" ? "1RM" :
+    kind === "custom" ? "Custom" : "BW";
   return (
     <span className={`ml-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${cls}`}>
       {label}

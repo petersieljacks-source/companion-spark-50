@@ -102,6 +102,8 @@ function Home() {
             Create your first program
           </Link>
         </Card>
+      ) : activeProgram.kind === "custom" ? (
+        <CustomHome prog={activeProgram} logs={logs} />
       ) : (
         <ActiveHome
           prog={activeProgram}
@@ -126,6 +128,121 @@ function Home() {
         />
       )}
     </AppShell>
+  );
+}
+
+function CustomHome({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
+  const sessions = prog.sessions ?? [];
+  const totalSessionsLogged = useMemo(
+    () => logs.filter((l) => l.program_id === prog.id && l.type === "custom").length,
+    [logs, prog.id],
+  );
+
+  // Per-exercise PR list (best e1RM) for the program's exercises.
+  const exerciseRows = useMemo(() => {
+    const all: { name: string; pr: number | null; lastDate: string | null }[] = [];
+    for (const s of sessions) {
+      for (const ex of s.exercises) {
+        const liftId = `custom-${ex.id}`;
+        const matches = logs.filter((l) => l.program_id === prog.id && l.lift_id === liftId);
+        const pr = matches.reduce((m, l) => (l.e1rm && Number(l.e1rm) > m ? Number(l.e1rm) : m), 0);
+        const last = matches.reduce<string | null>((acc, l) => (acc && acc > l.date ? acc : l.date), null);
+        all.push({ name: ex.name, pr: pr || null, lastDate: last });
+      }
+    }
+    return all;
+  }, [sessions, logs, prog.id]);
+
+  return (
+    <>
+      <div className="px-4 pt-8 pb-3 text-center">
+        <div className="text-[28px] font-semibold tracking-tight">{prog.name}</div>
+        <div className="mt-0.5 text-sm text-muted-foreground">
+          Custom program · {sessions.length} session{sessions.length === 1 ? "" : "s"} · {totalSessionsLogged} logged
+        </div>
+      </div>
+
+      <SessionPicker prog={prog} logs={logs} />
+
+      {exerciseRows.some((r) => r.pr) && (
+        <Card className="!py-3.5">
+          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+            Best estimated 1RM
+          </div>
+          <div className="space-y-1.5">
+            {exerciseRows.filter((r) => r.pr).map((r, i) => (
+              <div key={i} className="flex items-center justify-between text-[13px]">
+                <span className="truncate">{r.name}</span>
+                <span className="ml-2 font-semibold">{Math.round(r.pr!)} kg</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </>
+  );
+}
+
+function SessionPicker({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
+  const navigate = useNavigate();
+  const sessions = prog.sessions ?? [];
+  if (!sessions.length) {
+    return (
+      <Card>
+        <div className="text-[13px] text-muted-foreground">
+          This custom program has no sessions yet.
+        </div>
+        <Link
+          to="/program/new"
+          search={{ edit: prog.id }}
+          className="mt-3 inline-block rounded-lg bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground"
+        >
+          Add sessions
+        </Link>
+      </Card>
+    );
+  }
+
+  function lastDateFor(sessionId: string): string | null {
+    const exIds = new Set(
+      sessions
+        .find((s) => s.id === sessionId)
+        ?.exercises.map((e) => `custom-${e.id}`) ?? [],
+    );
+    const matches = logs.filter((l) => l.program_id === prog.id && exIds.has(l.lift_id));
+    if (!matches.length) return null;
+    return matches.reduce((acc, l) => (l.date > acc ? l.date : acc), matches[0].date);
+  }
+
+  return (
+    <div className="px-4 pt-2">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+        Start a session
+      </div>
+      <div className="space-y-2">
+        {sessions.map((s) => {
+          const last = lastDateFor(s.id);
+          const lastLabel = last
+            ? `Last trained ${new Date(last).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+            : "Not trained yet";
+          return (
+            <button
+              key={s.id}
+              onClick={() => navigate({ to: "/custom-session/$sessionId", params: { sessionId: s.id } })}
+              className="flex w-full items-center justify-between rounded-xl border border-info bg-info-bg px-4 py-3 text-left"
+            >
+              <div>
+                <div className="text-[15px] font-semibold text-info">{s.name}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {s.exercises.length} exercise{s.exercises.length === 1 ? "" : "s"} · {lastLabel}
+                </div>
+              </div>
+              <Play className="h-5 w-5 text-info" strokeWidth={1.6} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
