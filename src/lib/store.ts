@@ -316,6 +316,44 @@ export function useStore() {
     await refresh();
   }
 
+  // ── Custom-program helpers ──
+
+  /** Replace one exercise inside a custom program's session. */
+  async function updateCustomExercise(programId: string, sessionId: string, exercise: CustomExercise) {
+    if (!user) return;
+    const prog = state.programs.find((p) => p.id === programId);
+    if (!prog) return;
+    const sessions = (prog.sessions ?? []).map((s) =>
+      s.id === sessionId
+        ? { ...s, exercises: s.exercises.map((e) => (e.id === exercise.id ? exercise : e)) }
+        : s,
+    );
+    await supabase.from("programs").update({ sessions: sessions as never }).eq("id", programId);
+    await refresh();
+  }
+
+  /** Bump the run counter on a custom session (used as `cycle` on logs to dedupe rows). */
+  async function bumpCustomSessionRuns(programId: string, sessionId: string): Promise<number> {
+    const prog = state.programs.find((p) => p.id === programId);
+    if (!prog) return 1;
+    const sessions = (prog.sessions ?? []).map((s) =>
+      s.id === sessionId ? { ...s, runs: (s.runs ?? 0) + 1 } : s,
+    );
+    const target = sessions.find((s) => s.id === sessionId);
+    await supabase.from("programs").update({ sessions: sessions as never }).eq("id", programId);
+    await refresh();
+    return target?.runs ?? 1;
+  }
+
+  /** Soft-archive: keep program + logs, just hide it from the active flow. */
+  async function archiveProgram(id: string) {
+    if (!user) return;
+    await supabase.from("programs").update({ archived: true, active: false }).eq("id", id);
+    await refresh();
+  }
+
+  /** Hard delete a single custom-session log (preserves PR history elsewhere). */
+
   return {
     ...state,
     activeProgram,
@@ -324,6 +362,7 @@ export function useStore() {
     updateProgram,
     editProgram,
     deleteProgram,
+    archiveProgram,
     upsertLog,
     insertRestartMarker,
     setBodyweight,
@@ -331,5 +370,7 @@ export function useStore() {
     deleteLog,
     addSkipMarker,
     advanceCycle,
+    updateCustomExercise,
+    bumpCustomSessionRuns,
   };
 }
