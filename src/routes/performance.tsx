@@ -240,6 +240,28 @@ function Performance() {
           </div>
         )}
       </Card>
+
+      {allTimePRs.length > 0 && (
+        <>
+          <SectionLabel>All-time PRs</SectionLabel>
+          <Card className="!p-0">
+            <div className="grid grid-cols-[1fr_72px_72px] border-b border-border text-[11px] text-muted-foreground">
+              <div className="px-3 py-2.5">Lift</div>
+              <div className="px-1 py-2.5 text-center">Best e1RM</div>
+              <div className="px-2 py-2.5 text-right">Date</div>
+            </div>
+            {allTimePRs.map((r) => (
+              <div key={r.name} className="grid grid-cols-[1fr_72px_72px] border-b border-border last:border-0">
+                <div className="px-3 py-2.5 text-[13px]">{r.name}</div>
+                <div className="px-1 py-2.5 text-center text-[13px] font-semibold">{Math.round(r.pr)} kg</div>
+                <div className="px-2 py-2.5 text-right text-[12px] text-muted-foreground">
+                  {r.date ? new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : ""}
+                </div>
+              </div>
+            ))}
+          </Card>
+        </>
+      )}
     </AppShell>
   );
 }
