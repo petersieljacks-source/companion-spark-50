@@ -89,7 +89,7 @@ export type WorkoutLog = {
   program_id: string;
   lift_id: string;
   lift_name: string;
-  type: "main" | "supp" | "restart" | "test" | "skip";
+  type: "main" | "supp" | "restart" | "test" | "skip" | "custom";
   bodyweight: boolean;
   week: number;
   day: number;
