@@ -87,7 +87,10 @@ function NewProgram() {
   function addSupp() {
     const n = newSuppName.trim();
     if (!n) return;
-    setSuppLifts((arr) => [...arr, { name: n, bodyweight: newSuppBW, weight: 0 }]);
+    setSuppLifts((arr) => [
+      ...arr,
+      { name: n, bodyweight: newSuppBW, weight: 0, rep_targets: [10, 10, 10], increment: 2.5 },
+    ]);
     setNewSuppName(""); setNewSuppBW(false);
   }
 
