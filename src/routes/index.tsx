@@ -84,7 +84,7 @@ function Home() {
           to="/program/new"
           className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium"
         >
-          + Program
+          New Program
         </Link>
       </div>
 
