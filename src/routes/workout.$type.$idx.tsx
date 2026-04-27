@@ -404,7 +404,17 @@ function WorkoutPage() {
                 <div className="text-[12px] text-muted-foreground">
                   {isMain
                     ? (lift.bodyweight ? `Total: ${totalKg.toFixed(1)} kg` : (isAmrap ? "AMRAP" : `${s!.reps} reps`))
-                    : (lift.bodyweight ? `Total: ${totalKg} kg` : "8–10 reps")}
+                    : (lift.bodyweight ? `Total: ${totalKg} kg` : null)}
+                  {!isMain && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingTargetIdx(i)}
+                      className="ml-1 underline decoration-dotted underline-offset-2 hover:text-foreground"
+                      aria-label={`Edit target for set ${i + 1}`}
+                    >
+                      Target: {(suppLift!.rep_targets ?? [10, 10, 10])[i] ?? 10} reps
+                    </button>
+                  )}
                 </div>
                 {isAmrap && <div className="text-[11px] font-semibold text-warning">go for max</div>}
                 {isAmrap && amrapPr && (
