@@ -177,7 +177,8 @@ function WorkoutPage() {
       const a = sets.find((s) => s.amrap && s.reps > 0);
       if (a) e1rm = estimate1RM(a.weight, a.reps);
     } else {
-      overload = sets.length === SUPP_SETS && sets.every((s) => s.reps >= 10);
+      const targets = (suppLift?.rep_targets ?? [10, 10, 10]);
+      overload = sets.length === SUPP_SETS && sets.every((s, i) => s.reps >= (targets[i] ?? 10));
     }
     // P0 bug 2: preserve original date when editing an existing log; only stamp now for first save.
     const saveDate = existingLog?.date ?? new Date().toISOString();
