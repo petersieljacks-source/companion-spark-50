@@ -23,7 +23,16 @@ export type SuppLift = {
   name: string;
   bodyweight: boolean;
   weight: number;
+  /** Per-set rep targets. Length = SUPP_SETS. Defaults to [10,10,10] for legacy lifts. */
+  rep_targets?: number[];
+  /** Kg added when the user accepts the post-workout load-bump prompt. Defaults to 2.5. */
+  increment?: number;
 };
+
+/** Default per-set rep targets for a supporting lift (matches legacy "all sets at 10" trigger). */
+export function defaultRepTargets(): number[] {
+  return Array(SUPP_SETS).fill(10);
+}
 
 export type SetLog = {
   weight: number;
