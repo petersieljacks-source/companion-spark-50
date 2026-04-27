@@ -527,6 +527,102 @@ function WorkoutPage() {
         )}
       </div>
       <div className="h-20 text-lg" />
+
+      {/* Inline rep-target editor for supporting lifts */}
+      {editingTargetIdx !== null && suppLift && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setEditingTargetIdx(null)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border bg-card p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 text-[15px] font-semibold">
+              Edit target — Set {editingTargetIdx + 1}
+            </div>
+            <div className="mb-3 text-[12px] text-muted-foreground">
+              Changes apply now and persist to future cycles until you change them again.
+            </div>
+            <input
+              type="number"
+              min={1}
+              autoFocus
+              defaultValue={(suppLift.rep_targets ?? [10, 10, 10])[editingTargetIdx] ?? 10}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") setEditingTargetIdx(null);
+              }}
+              onBlur={async (e) => {
+                const v = Math.max(1, parseInt(e.target.value) || 1);
+                const targets = [...(suppLift.rep_targets ?? [10, 10, 10])];
+                if (v !== targets[editingTargetIdx]) {
+                  targets[editingTargetIdx] = v;
+                  const newSupp = prog!.supp_lifts.map((sl, i) =>
+                    i === idx ? { ...sl, rep_targets: targets } : sl,
+                  );
+                  await updateProgram(prog!.id, { supp_lifts: newSupp });
+                  toast.success(`Set ${editingTargetIdx + 1} target → ${v} reps`);
+                }
+                setEditingTargetIdx(null);
+              }}
+              className="w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-center text-lg"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={() => setEditingTargetIdx(null)}
+                className="rounded-lg border border-input bg-card px-3 py-1.5 text-[13px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm-before-bump prompt */}
+      {bumpPrompt && suppLift && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-4">
+            <div className="mb-1 text-[16px] font-semibold">🎯 All rep targets hit!</div>
+            <div className="mb-4 text-[13px] text-muted-foreground">
+              You hit every target for <strong className="text-foreground">{suppLift.name}</strong>. Increase the working load from{" "}
+              <strong className="text-foreground">{bumpPrompt.from} kg</strong> to{" "}
+              <strong className="text-foreground">{bumpPrompt.to} kg</strong> for next time?
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setBumpPrompt(null);
+                  toast("Load kept the same.");
+                  const nav = pendingNavRef.current;
+                  pendingNavRef.current = null;
+                  if (nav) nav();
+                }}
+                className="flex-1 rounded-xl border border-input bg-card py-2.5 text-[14px] font-medium"
+              >
+                Keep load
+              </button>
+              <button
+                onClick={async () => {
+                  const newSupp = prog!.supp_lifts.map((sl, i) =>
+                    i === idx ? { ...sl, weight: bumpPrompt.to } : sl,
+                  );
+                  await updateProgram(prog!.id, { supp_lifts: newSupp });
+                  toast.success(`Load → ${bumpPrompt.to} kg`);
+                  setBumpPrompt(null);
+                  const nav = pendingNavRef.current;
+                  pendingNavRef.current = null;
+                  if (nav) nav();
+                }}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-[14px] font-semibold text-primary-foreground"
+              >
+                Increase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
