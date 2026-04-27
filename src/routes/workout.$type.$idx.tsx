@@ -87,7 +87,10 @@ function WorkoutPage() {
   }, [prog, isMain, idx, type, existingLog, effectiveWeek, effectiveDay, effectiveCycle]);
 
   const mainLift = isMain && lift ? (lift as { name: string; bodyweight: boolean; tm: number; addedLoad?: number }) : null;
-  const suppLift = !isMain && lift ? (lift as { name: string; bodyweight: boolean; weight: number }) : null;
+  const suppLift = !isMain && lift ? (lift as SuppLift) : null;
+  const [editingTargetIdx, setEditingTargetIdx] = useState<number | null>(null);
+  const [bumpPrompt, setBumpPrompt] = useState<{ from: number; to: number } | null>(null);
+  const pendingNavRef = useRef<null | (() => void)>(null);
 
   // AMRAP PR for the same %TM (matched by lift_name across cycles).
   const amrapPr = useMemo(() => {
