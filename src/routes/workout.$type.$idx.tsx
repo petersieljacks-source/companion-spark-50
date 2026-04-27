@@ -90,6 +90,8 @@ function WorkoutPage() {
   const suppLift = !isMain && lift ? (lift as SuppLift) : null;
   const [editingTargetIdx, setEditingTargetIdx] = useState<number | null>(null);
   const [bumpPrompt, setBumpPrompt] = useState<{ from: number; to: number } | null>(null);
+  const bumpPromptRef = useRef<{ from: number; to: number } | null>(null);
+  bumpPromptRef.current = bumpPrompt;
   const pendingNavRef = useRef<null | (() => void)>(null);
 
   // AMRAP PR for the same %TM (matched by lift_name across cycles).
