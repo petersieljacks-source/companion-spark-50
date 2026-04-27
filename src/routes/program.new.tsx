@@ -87,7 +87,10 @@ function NewProgram() {
   function addSupp() {
     const n = newSuppName.trim();
     if (!n) return;
-    setSuppLifts((arr) => [...arr, { name: n, bodyweight: newSuppBW, weight: 0 }]);
+    setSuppLifts((arr) => [
+      ...arr,
+      { name: n, bodyweight: newSuppBW, weight: 0, rep_targets: [10, 10, 10], increment: 2.5 },
+    ]);
     setNewSuppName(""); setNewSuppBW(false);
   }
 
@@ -394,6 +397,49 @@ function NewProgram() {
                       Total = {bodyweight} + {l.weight} = <strong className="text-foreground">{bodyweight + l.weight} kg</strong>
                     </div>
                   )}
+                  <div className="mt-2.5">
+                    <div className="mb-1 text-[12px] text-muted-foreground">Rep target per set</div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[0, 1, 2].map((s) => {
+                        const targets = l.rep_targets ?? [10, 10, 10];
+                        return (
+                          <div key={s} className="flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground">S{s + 1}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={targets[s] ?? 10}
+                              onChange={(e) => {
+                                const v = Math.max(1, parseInt(e.target.value) || 1);
+                                setSuppLifts((arr) => arr.map((x, j) => {
+                                  if (j !== i) return x;
+                                  const next = [...(x.rep_targets ?? [10, 10, 10])];
+                                  next[s] = v;
+                                  return { ...x, rep_targets: next };
+                                }));
+                              }}
+                              className="w-full rounded-lg border border-input bg-input-bg px-1.5 py-1 text-center text-sm"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                      <span>Load bump (when all targets hit):</span>
+                      <input
+                        type="number"
+                        step={0.5}
+                        min={0}
+                        value={l.increment ?? 2.5}
+                        onChange={(e) => {
+                          const v = Math.max(0, parseFloat(e.target.value) || 0);
+                          setSuppLifts((arr) => arr.map((x, j) => j === i ? { ...x, increment: v } : x));
+                        }}
+                        className="w-16 rounded-lg border border-input bg-input-bg px-1.5 py-0.5 text-center text-[12px]"
+                      />
+                      <span>kg</span>
+                    </div>
+                  </div>
                 </div>
               ))
             )}

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog } from "@/lib/531";
+import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog, type SuppLift } from "@/lib/531";
 
 type WorkoutSearch = { week?: number; day?: number; cycle?: number };
 
@@ -87,7 +87,12 @@ function WorkoutPage() {
   }, [prog, isMain, idx, type, existingLog, effectiveWeek, effectiveDay, effectiveCycle]);
 
   const mainLift = isMain && lift ? (lift as { name: string; bodyweight: boolean; tm: number; addedLoad?: number }) : null;
-  const suppLift = !isMain && lift ? (lift as { name: string; bodyweight: boolean; weight: number }) : null;
+  const suppLift = !isMain && lift ? (lift as SuppLift) : null;
+  const [editingTargetIdx, setEditingTargetIdx] = useState<number | null>(null);
+  const [bumpPrompt, setBumpPrompt] = useState<{ from: number; to: number } | null>(null);
+  const bumpPromptRef = useRef<{ from: number; to: number } | null>(null);
+  bumpPromptRef.current = bumpPrompt;
+  const pendingNavRef = useRef<null | (() => void)>(null);
 
   // AMRAP PR for the same %TM (matched by lift_name across cycles).
   const amrapPr = useMemo(() => {
@@ -174,7 +179,8 @@ function WorkoutPage() {
       const a = sets.find((s) => s.amrap && s.reps > 0);
       if (a) e1rm = estimate1RM(a.weight, a.reps);
     } else {
-      overload = sets.length === SUPP_SETS && sets.every((s) => s.reps >= 10);
+      const targets = (suppLift?.rep_targets ?? [10, 10, 10]);
+      overload = sets.length === SUPP_SETS && sets.every((s, i) => s.reps >= (targets[i] ?? 10));
     }
     // P0 bug 2: preserve original date when editing an existing log; only stamp now for first save.
     const saveDate = existingLog?.date ?? new Date().toISOString();
@@ -220,13 +226,15 @@ function WorkoutPage() {
           toast.success(`🏆 New rep PR for ${WEEK_LABELS[currentWeek]}: ${a.reps} reps!`);
         }
       }
-      // P0 bug 3: only apply supp overload bump on live (non-review) explicit save.
-      if (!isMain && overload && !isReview) {
-        const supp = lift as { weight: number };
-        const newW = roundTo((supp.weight ?? 0) + 2.5, prog!.round);
-        const newSupp = prog!.supp_lifts.map((sl, i) => i === idx ? { ...sl, weight: newW } : sl);
-        await updateProgram(prog!.id, { supp_lifts: newSupp });
-        toast.success("All sets at 10 — load increased by 2.5 kg!");
+      // Supporting-lift load bump: prompt the user instead of bumping silently.
+      if (!isMain && overload && !isReview && suppLift) {
+        toast.success("🎯 All rep targets hit!");
+        const inc = suppLift.increment ?? 2.5;
+        const from = suppLift.weight ?? 0;
+        const to = roundTo(from + inc, prog!.round);
+        if (inc > 0 && to > from) {
+          setBumpPrompt({ from, to });
+        }
       }
     }
     return true;
@@ -272,21 +280,34 @@ function WorkoutPage() {
   // Preserve search params (review mode) when navigating between session/workout pages.
   const navSearch = isReview ? { week: effectiveWeek, day: effectiveDay, cycle: effectiveCycle } : {};
 
+  function runOrDeferNav(nav: () => void) {
+    // If the post-save bump prompt opened, defer navigation until the user resolves it.
+    // We check on the next tick because setBumpPrompt is async (state update).
+    setTimeout(() => {
+      if (bumpPromptRef.current) {
+        pendingNavRef.current = nav;
+      } else {
+        nav();
+      }
+    }, 0);
+  }
   async function saveAndBack() {
     const ok = await doSave({ silent: false });
-    if (ok) navigate({ to: "/session", search: navSearch });
+    if (ok) runOrDeferNav(() => navigate({ to: "/session", search: navSearch }));
   }
   async function saveAndNext() {
     const ok = await doSave({ silent: false });
     if (!ok) return;
     const next = findNextPos();
-    if (!next) navigate({ to: "/session", search: navSearch });
-    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) }, search: navSearch });
+    runOrDeferNav(() => {
+      if (!next) navigate({ to: "/session", search: navSearch });
+      else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) }, search: navSearch });
+    });
   }
   async function finishProgram() {
     const ok = await doSave({ silent: false });
     if (!ok) return;
-    navigate({ to: "/" });
+    runOrDeferNav(() => navigate({ to: "/" }));
   }
   async function gotoPrev() {
     if (!prevExercise) return;
@@ -404,7 +425,17 @@ function WorkoutPage() {
                 <div className="text-[12px] text-muted-foreground">
                   {isMain
                     ? (lift.bodyweight ? `Total: ${totalKg.toFixed(1)} kg` : (isAmrap ? "AMRAP" : `${s!.reps} reps`))
-                    : (lift.bodyweight ? `Total: ${totalKg} kg` : "8–10 reps")}
+                    : (lift.bodyweight ? `Total: ${totalKg} kg` : null)}
+                  {!isMain && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingTargetIdx(i)}
+                      className="ml-1 underline decoration-dotted underline-offset-2 hover:text-foreground"
+                      aria-label={`Edit target for set ${i + 1}`}
+                    >
+                      Target: {(suppLift!.rep_targets ?? [10, 10, 10])[i] ?? 10} reps
+                    </button>
+                  )}
                 </div>
                 {isAmrap && <div className="text-[11px] font-semibold text-warning">go for max</div>}
                 {isAmrap && amrapPr && (
@@ -496,6 +527,102 @@ function WorkoutPage() {
         )}
       </div>
       <div className="h-20 text-lg" />
+
+      {/* Inline rep-target editor for supporting lifts */}
+      {editingTargetIdx !== null && suppLift && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setEditingTargetIdx(null)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border bg-card p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 text-[15px] font-semibold">
+              Edit target — Set {editingTargetIdx + 1}
+            </div>
+            <div className="mb-3 text-[12px] text-muted-foreground">
+              Changes apply now and persist to future cycles until you change them again.
+            </div>
+            <input
+              type="number"
+              min={1}
+              autoFocus
+              defaultValue={(suppLift.rep_targets ?? [10, 10, 10])[editingTargetIdx] ?? 10}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") setEditingTargetIdx(null);
+              }}
+              onBlur={async (e) => {
+                const v = Math.max(1, parseInt(e.target.value) || 1);
+                const targets = [...(suppLift.rep_targets ?? [10, 10, 10])];
+                if (v !== targets[editingTargetIdx]) {
+                  targets[editingTargetIdx] = v;
+                  const newSupp = prog!.supp_lifts.map((sl, i) =>
+                    i === idx ? { ...sl, rep_targets: targets } : sl,
+                  );
+                  await updateProgram(prog!.id, { supp_lifts: newSupp });
+                  toast.success(`Set ${editingTargetIdx + 1} target → ${v} reps`);
+                }
+                setEditingTargetIdx(null);
+              }}
+              className="w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-center text-lg"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={() => setEditingTargetIdx(null)}
+                className="rounded-lg border border-input bg-card px-3 py-1.5 text-[13px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm-before-bump prompt */}
+      {bumpPrompt && suppLift && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-4">
+            <div className="mb-1 text-[16px] font-semibold">🎯 All rep targets hit!</div>
+            <div className="mb-4 text-[13px] text-muted-foreground">
+              You hit every target for <strong className="text-foreground">{suppLift.name}</strong>. Increase the working load from{" "}
+              <strong className="text-foreground">{bumpPrompt.from} kg</strong> to{" "}
+              <strong className="text-foreground">{bumpPrompt.to} kg</strong> for next time?
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setBumpPrompt(null);
+                  toast("Load kept the same.");
+                  const nav = pendingNavRef.current;
+                  pendingNavRef.current = null;
+                  if (nav) nav();
+                }}
+                className="flex-1 rounded-xl border border-input bg-card py-2.5 text-[14px] font-medium"
+              >
+                Keep load
+              </button>
+              <button
+                onClick={async () => {
+                  const newSupp = prog!.supp_lifts.map((sl, i) =>
+                    i === idx ? { ...sl, weight: bumpPrompt.to } : sl,
+                  );
+                  await updateProgram(prog!.id, { supp_lifts: newSupp });
+                  toast.success(`Load → ${bumpPrompt.to} kg`);
+                  setBumpPrompt(null);
+                  const nav = pendingNavRef.current;
+                  pendingNavRef.current = null;
+                  if (nav) nav();
+                }}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-[14px] font-semibold text-primary-foreground"
+              >
+                Increase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
