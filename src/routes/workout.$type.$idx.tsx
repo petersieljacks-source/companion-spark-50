@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
-import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog } from "@/lib/531";
+import { WEEK_SCHEME, WEEK_LABELS, SUPP_SETS, roundTo, estimate1RM, type SetLog, type SuppLift } from "@/lib/531";
 
 type WorkoutSearch = { week?: number; day?: number; cycle?: number };
 
