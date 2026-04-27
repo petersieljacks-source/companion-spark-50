@@ -224,13 +224,15 @@ function WorkoutPage() {
           toast.success(`🏆 New rep PR for ${WEEK_LABELS[currentWeek]}: ${a.reps} reps!`);
         }
       }
-      // P0 bug 3: only apply supp overload bump on live (non-review) explicit save.
-      if (!isMain && overload && !isReview) {
-        const supp = lift as { weight: number };
-        const newW = roundTo((supp.weight ?? 0) + 2.5, prog!.round);
-        const newSupp = prog!.supp_lifts.map((sl, i) => i === idx ? { ...sl, weight: newW } : sl);
-        await updateProgram(prog!.id, { supp_lifts: newSupp });
-        toast.success("All sets at 10 — load increased by 2.5 kg!");
+      // Supporting-lift load bump: prompt the user instead of bumping silently.
+      if (!isMain && overload && !isReview && suppLift) {
+        toast.success("🎯 All rep targets hit!");
+        const inc = suppLift.increment ?? 2.5;
+        const from = suppLift.weight ?? 0;
+        const to = roundTo(from + inc, prog!.round);
+        if (inc > 0 && to > from) {
+          setBumpPrompt({ from, to });
+        }
       }
     }
     return true;
