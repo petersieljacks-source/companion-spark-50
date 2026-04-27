@@ -220,6 +220,23 @@ function Settings() {
               <div className="mb-2.5 text-[13px] font-medium text-muted-foreground">Supporting lifts — working load</div>
               {prog.supp_lifts.map((l, i) => {
                 const displayed = suppEdits[i] ?? String(l.weight);
+                const targets = l.rep_targets ?? [10, 10, 10];
+                async function setTarget(s: number, v: number) {
+                  if (!prog) return;
+                  const next = [...targets];
+                  next[s] = Math.max(1, v);
+                  const newSupp: SuppLift[] = prog.supp_lifts.map((x, j) =>
+                    j === i ? { ...x, rep_targets: next } : x,
+                  );
+                  await updateProgram(prog.id, { supp_lifts: newSupp });
+                }
+                async function setIncrement(v: number) {
+                  if (!prog) return;
+                  const newSupp: SuppLift[] = prog.supp_lifts.map((x, j) =>
+                    j === i ? { ...x, increment: Math.max(0, v) } : x,
+                  );
+                  await updateProgram(prog.id, { supp_lifts: newSupp });
+                }
                 return (
                   <div key={i} className="border-b border-border py-2 last:border-0">
                     <div className="flex items-center gap-2">
@@ -242,6 +259,43 @@ function Settings() {
                         Total = BW {bodyweight} + {l.weight} = {bodyweight + l.weight} kg
                       </div>
                     )}
+                    <div className="mt-2">
+                      <div className="mb-1 text-[12px] text-muted-foreground">Rep target per set</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[0, 1, 2].map((s) => (
+                          <div key={s} className="flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground">S{s + 1}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              defaultValue={targets[s] ?? 10}
+                              onBlur={(e) => {
+                                const v = parseInt(e.target.value) || 1;
+                                if (v !== (targets[s] ?? 10)) void setTarget(s, v);
+                              }}
+                              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                              className="w-full rounded-lg border border-input bg-input-bg px-1.5 py-1 text-center text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                        <span>Load bump (when all hit):</span>
+                        <input
+                          type="number"
+                          step={0.5}
+                          min={0}
+                          defaultValue={l.increment ?? 2.5}
+                          onBlur={(e) => {
+                            const v = parseFloat(e.target.value) || 0;
+                            if (v !== (l.increment ?? 2.5)) void setIncrement(v);
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="w-16 rounded-lg border border-input bg-input-bg px-1.5 py-0.5 text-center text-[12px]"
+                        />
+                        <span>kg</span>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
