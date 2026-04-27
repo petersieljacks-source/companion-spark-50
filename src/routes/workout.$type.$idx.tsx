@@ -278,21 +278,34 @@ function WorkoutPage() {
   // Preserve search params (review mode) when navigating between session/workout pages.
   const navSearch = isReview ? { week: effectiveWeek, day: effectiveDay, cycle: effectiveCycle } : {};
 
+  function runOrDeferNav(nav: () => void) {
+    // If the post-save bump prompt opened, defer navigation until the user resolves it.
+    // We check on the next tick because setBumpPrompt is async (state update).
+    setTimeout(() => {
+      if (bumpPromptRef.current) {
+        pendingNavRef.current = nav;
+      } else {
+        nav();
+      }
+    }, 0);
+  }
   async function saveAndBack() {
     const ok = await doSave({ silent: false });
-    if (ok) navigate({ to: "/session", search: navSearch });
+    if (ok) runOrDeferNav(() => navigate({ to: "/session", search: navSearch }));
   }
   async function saveAndNext() {
     const ok = await doSave({ silent: false });
     if (!ok) return;
     const next = findNextPos();
-    if (!next) navigate({ to: "/session", search: navSearch });
-    else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) }, search: navSearch });
+    runOrDeferNav(() => {
+      if (!next) navigate({ to: "/session", search: navSearch });
+      else navigate({ to: "/workout/$type/$idx", params: { type: next.type, idx: String(next.idx) }, search: navSearch });
+    });
   }
   async function finishProgram() {
     const ok = await doSave({ silent: false });
     if (!ok) return;
-    navigate({ to: "/" });
+    runOrDeferNav(() => navigate({ to: "/" }));
   }
   async function gotoPrev() {
     if (!prevExercise) return;
