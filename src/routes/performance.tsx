@@ -55,6 +55,8 @@ function Performance() {
     return rows;
   }, [allLogsByLiftName]);
 
+  if (loading) return <AppShell title="Performance"><Empty>Loading…</Empty></AppShell>;
+
   // Build the focus tab list.
   let liftSources: { name: string; idx: number }[] = [];
   if (prog && prog.kind === "custom") {
