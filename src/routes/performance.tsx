@@ -14,8 +14,6 @@ function Performance() {
   const { activeProgram: prog, logs, loading, addManualTest, deleteLog } = useStore();
   const [liftIdx, setLiftIdx] = useState(0);
 
-  if (loading) return <AppShell title="Performance"><Empty>Loading…</Empty></AppShell>;
-
   // Build "lifts" tab list. For 5/3/1 use prog.main_lifts (preserves order).
   // For custom programs use the active program's exercises across sessions.
   // For nothing-active fall back to the union of all lift names ever logged.
@@ -56,6 +54,8 @@ function Performance() {
     rows.sort((a, b) => b.pr - a.pr);
     return rows;
   }, [allLogsByLiftName]);
+
+  if (loading) return <AppShell title="Performance"><Empty>Loading…</Empty></AppShell>;
 
   // Build the focus tab list.
   let liftSources: { name: string; idx: number }[] = [];
