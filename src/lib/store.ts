@@ -377,6 +377,8 @@ export function useStore() {
     editProgram,
     deleteProgram,
     archiveProgram,
+    unarchiveProgram,
+    setActiveProgram,
     upsertLog,
     insertRestartMarker,
     setBodyweight,
