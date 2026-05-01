@@ -216,33 +216,32 @@ function SessionPicker({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
   }
 
   return (
-    <div className="px-4 pt-2">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-        Start a session
-      </div>
-      <div className="space-y-2">
-        {sessions.map((s) => {
-          const last = lastDateFor(s.id);
-          const lastLabel = last
-            ? `Last trained ${new Date(last).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
-            : "Not trained yet";
-          return (
-            <button
-              key={s.id}
-              onClick={() => navigate({ to: "/custom-session/$sessionId", params: { sessionId: s.id } })}
-              className="flex w-full items-center justify-between rounded-xl border border-info bg-info-bg px-4 py-3 text-left"
-            >
-              <div>
-                <div className="text-[15px] font-semibold text-info">{s.name}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {s.exercises.length} exercise{s.exercises.length === 1 ? "" : "s"} · {lastLabel}
-                </div>
-              </div>
-              <Play className="h-5 w-5 text-info" strokeWidth={1.6} />
-            </button>
-          );
-        })}
-      </div>
+    <div className="grid grid-cols-2 gap-3 px-4 pt-2">
+      {sessions.map((s) => {
+        const last = lastDateFor(s.id);
+        const lastLabel = last
+          ? `Last ${new Date(last).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+          : "Not trained yet";
+        return (
+          <button
+            key={s.id}
+            onClick={() => navigate({ to: "/custom-session/$sessionId", params: { sessionId: s.id } })}
+            className="rounded-2xl border border-info bg-info-bg px-4 py-6 text-center"
+          >
+            <Play className="mx-auto h-9 w-9 text-info" strokeWidth={1.6} />
+            <div className="mt-2.5 text-[15px] font-semibold text-info truncate">{s.name}</div>
+            <div className="text-[12px] text-muted-foreground truncate">{lastLabel}</div>
+          </button>
+        );
+      })}
+      <Link
+        to="/performance"
+        className="rounded-2xl border border-border bg-card px-4 py-6 text-center"
+      >
+        <Activity className="mx-auto h-9 w-9" strokeWidth={1.6} />
+        <div className="mt-2.5 text-[15px] font-semibold">Progress</div>
+        <div className="text-[12px] text-muted-foreground">Stats & 1RM trends</div>
+      </Link>
     </div>
   );
 }
