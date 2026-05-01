@@ -71,6 +71,12 @@ function Home() {
   return (
     <AppShell title="BØFSHOWET">
       <div className="flex justify-end gap-2 px-4 pt-2">
+        <Link
+          to="/programs"
+          className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium"
+        >
+          Programs
+        </Link>
         {activeProgram && (
           <Link
             to="/program/new"
