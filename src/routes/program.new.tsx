@@ -95,11 +95,35 @@ function NewProgram() {
   }
 
   // Custom-session helpers
+  function defaultSessionName(idx: number, total: number) {
+    if (total === 2) return idx === 0 ? "Lower" : "Upper";
+    if (total === 3) return ["Push", "Pull", "Legs"][idx] ?? `Session ${idx + 1}`;
+    if (total === 4) return ["Lower A", "Upper A", "Lower B", "Upper B"][idx] ?? `Session ${idx + 1}`;
+    return `Session ${idx + 1}`;
+  }
+  function isDefaultName(name: string) {
+    return (
+      name === "" ||
+      /^Session \d+$/.test(name) ||
+      ["Lower", "Upper", "Push", "Pull", "Legs", "Lower A", "Upper A", "Lower B", "Upper B"].includes(name)
+    );
+  }
   function addSession() {
-    setSessions((arr) => [
-      ...arr,
-      { id: newId(), name: `Session ${arr.length + 1}`, exercises: [], runs: 0 },
-    ]);
+    setSessions((arr) => {
+      const next = [...arr, { id: newId(), name: "", exercises: [], runs: 0 }];
+      return next.map((s, i) =>
+        isDefaultName(s.name) ? { ...s, name: defaultSessionName(i, next.length) } : s,
+      );
+    });
+  }
+  function applyPreset(preset: "upper-lower" | "ppl" | "4day") {
+    const names =
+      preset === "upper-lower"
+        ? ["Lower", "Upper"]
+        : preset === "ppl"
+          ? ["Push", "Pull", "Legs"]
+          : ["Lower A", "Upper A", "Lower B", "Upper B"];
+    setSessions(names.map((n) => ({ id: newId(), name: n, exercises: [], runs: 0 })));
   }
   function removeSession(id: string) {
     setSessions((arr) => arr.filter((s) => s.id !== id));
