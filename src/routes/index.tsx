@@ -71,6 +71,12 @@ function Home() {
   return (
     <AppShell title="BØFSHOWET">
       <div className="flex justify-end gap-2 px-4 pt-2">
+        <Link
+          to="/programs"
+          className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium"
+        >
+          Programs
+        </Link>
         {activeProgram && (
           <Link
             to="/program/new"
@@ -164,6 +170,7 @@ function CustomHome({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
 
       <SessionPicker prog={prog} logs={logs} />
 
+      <RecentSessionsStrip prog={prog} logs={logs} />
 
       {exerciseRows.some((r) => r.pr) && (
         <Card className="!py-3.5">
@@ -181,6 +188,115 @@ function CustomHome({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
         </Card>
       )}
     </>
+  );
+}
+
+function RecentSessionsStrip({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
+  const navigate = useNavigate();
+  const sessions = prog.sessions ?? [];
+  const DAYS = 14;
+
+  const { cells, weekCount, monthCount, streak } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Map of YYYY-MM-DD → first matching log/session info for this program
+    const sessionById = new Map(sessions.map((s) => [s.id, s]));
+    const exToSession = new Map<string, string>();
+    for (const s of sessions) for (const ex of s.exercises) exToSession.set(`custom-${ex.id}`, s.id);
+
+    type Day = { date: Date; key: string; sessionName: string | null; sessionId: string | null; iso: string };
+    const cells: Day[] = [];
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      cells.push({ date: d, key, sessionName: null, sessionId: null, iso: key });
+    }
+
+    const ours = logs.filter((l) => l.program_id === prog.id && l.type === "custom");
+    for (const log of ours) {
+      const k = log.date.slice(0, 10);
+      const cell = cells.find((c) => c.key === k);
+      if (!cell || cell.sessionName) continue;
+      const sid = exToSession.get(log.lift_id);
+      if (sid) {
+        cell.sessionId = sid;
+        cell.sessionName = sessionById.get(sid)?.name ?? "Session";
+      }
+    }
+
+    // counters
+    const startOfWeek = new Date(today);
+    const dow = (today.getDay() + 6) % 7; // Mon=0
+    startOfWeek.setDate(today.getDate() - dow);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const trainedDates = new Set(
+      ours.map((l) => l.date.slice(0, 10)),
+    );
+    let weekCount = 0, monthCount = 0;
+    for (const k of trainedDates) {
+      const d = new Date(k);
+      if (d >= startOfWeek) weekCount++;
+      if (d >= startOfMonth) monthCount++;
+    }
+
+    // streak: consecutive days back from today (or yesterday if today empty)
+    let streak = 0;
+    const cur = new Date(today);
+    if (!trainedDates.has(cur.toISOString().slice(0, 10))) {
+      cur.setDate(cur.getDate() - 1);
+    }
+    while (trainedDates.has(cur.toISOString().slice(0, 10))) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    }
+
+    return { cells, weekCount, monthCount, streak };
+  }, [prog.id, sessions, logs]);
+
+  const trainedInWindow = cells.filter((c) => c.sessionName).length;
+  const dayLabel = (d: Date) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+
+  return (
+    <div className="px-4 pt-4">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+        Recent sessions
+      </div>
+      <div className="rounded-xl border border-border bg-card p-2">
+        <div className="grid grid-cols-7 gap-1.5">
+          {cells.map((c) => {
+            const filled = !!c.sessionName;
+            const isToday = c.key === new Date().toISOString().slice(0, 10);
+            return (
+              <button
+                key={c.key}
+                disabled={!filled}
+                onClick={() => filled && navigate({ to: "/history" })}
+                className={`flex flex-col items-center justify-center rounded-lg border py-1.5 text-[10px] ${
+                  filled
+                    ? "border-success bg-success-bg text-success"
+                    : isToday
+                      ? "border-info bg-background text-info"
+                      : "border-border bg-background text-muted-foreground"
+                }`}
+                aria-label={`${c.iso}${filled ? `: ${c.sessionName}` : ": no session"}`}
+              >
+                <span className="text-[9px] uppercase tracking-tight opacity-70">{dayLabel(c.date)}</span>
+                <span className="mt-0.5 truncate text-[10px] font-semibold leading-tight max-w-full px-0.5">
+                  {filled ? (c.sessionName!.length > 5 ? c.sessionName!.slice(0, 5) : c.sessionName) : (isToday ? "•" : "·")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-muted-foreground">
+          <span>Last {DAYS} days · {trainedInWindow} trained</span>
+          <span>This week: {weekCount} · Month: {monthCount} · Streak: {streak}d</span>
+        </div>
+      </div>
+    </div>
   );
 }
 

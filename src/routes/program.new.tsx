@@ -95,11 +95,35 @@ function NewProgram() {
   }
 
   // Custom-session helpers
+  function defaultSessionName(idx: number, total: number) {
+    if (total === 2) return idx === 0 ? "Lower" : "Upper";
+    if (total === 3) return ["Push", "Pull", "Legs"][idx] ?? `Session ${idx + 1}`;
+    if (total === 4) return ["Lower A", "Upper A", "Lower B", "Upper B"][idx] ?? `Session ${idx + 1}`;
+    return `Session ${idx + 1}`;
+  }
+  function isDefaultName(name: string) {
+    return (
+      name === "" ||
+      /^Session \d+$/.test(name) ||
+      ["Lower", "Upper", "Push", "Pull", "Legs", "Lower A", "Upper A", "Lower B", "Upper B"].includes(name)
+    );
+  }
   function addSession() {
-    setSessions((arr) => [
-      ...arr,
-      { id: newId(), name: `Session ${arr.length + 1}`, exercises: [], runs: 0 },
-    ]);
+    setSessions((arr) => {
+      const next = [...arr, { id: newId(), name: "", exercises: [], runs: 0 }];
+      return next.map((s, i) =>
+        isDefaultName(s.name) ? { ...s, name: defaultSessionName(i, next.length) } : s,
+      );
+    });
+  }
+  function applyPreset(preset: "upper-lower" | "ppl" | "4day") {
+    const names =
+      preset === "upper-lower"
+        ? ["Lower", "Upper"]
+        : preset === "ppl"
+          ? ["Push", "Pull", "Legs"]
+          : ["Lower A", "Upper A", "Lower B", "Upper B"];
+    setSessions(names.map((n) => ({ id: newId(), name: n, exercises: [], runs: 0 })));
   }
   function removeSession(id: string) {
     setSessions((arr) => arr.filter((s) => s.id !== id));
@@ -455,9 +479,34 @@ function NewProgram() {
         <>
           <SectionLabel>Sessions</SectionLabel>
           {sessions.length === 0 && (
-            <div className="px-4 pb-1 text-[12px] text-muted-foreground">
-              Add a session (e.g. "Upper A", "Lower A"). Each session holds the exercises you'll do that day.
-            </div>
+            <>
+              <div className="px-4 pb-2 text-[12px] text-muted-foreground">
+                Pick a template or add sessions one at a time.
+              </div>
+              <div className="px-4 pb-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyPreset("upper-lower")}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  Lower / Upper (2)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("ppl")}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  Push / Pull / Legs (3)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("4day")}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  4-day Upper/Lower
+                </button>
+              </div>
+            </>
           )}
           {sessions.map((s) => (
             <div key={s.id} className="mx-4 my-3 rounded-xl border border-border bg-card px-3.5 py-3">

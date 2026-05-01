@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -129,6 +129,24 @@ function Settings() {
         >
           Sign out
         </button>
+      </Card>
+
+      <SectionLabel>Library</SectionLabel>
+      <Card>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[14px] font-medium">Programs</div>
+            <div className="text-[12px] text-muted-foreground">
+              {programs.filter((p) => !p.archived).length} program{programs.filter((p) => !p.archived).length === 1 ? "" : "s"} saved · switch, archive, edit
+            </div>
+          </div>
+          <Link
+            to="/programs"
+            className="rounded-lg border border-input bg-card px-3.5 py-1.5 text-[13px] font-medium"
+          >
+            Manage
+          </Link>
+        </div>
       </Card>
 
       <SectionLabel>Body weight</SectionLabel>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionRouteImport } from './routes/session'
+import { Route as ProgramsRouteImport } from './routes/programs'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -27,6 +28,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SessionRoute = SessionRouteImport.update({
   id: '/session',
   path: '/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgramsRoute = ProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerformanceRoute = PerformanceRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/performance': typeof PerformanceRoute
+  '/programs': typeof ProgramsRoute
   '/session': typeof SessionRoute
   '/settings': typeof SettingsRoute
   '/custom-session/$sessionId': typeof CustomSessionSessionIdRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/performance': typeof PerformanceRoute
+  '/programs': typeof ProgramsRoute
   '/session': typeof SessionRoute
   '/settings': typeof SettingsRoute
   '/custom-session/$sessionId': typeof CustomSessionSessionIdRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/performance': typeof PerformanceRoute
+  '/programs': typeof ProgramsRoute
   '/session': typeof SessionRoute
   '/settings': typeof SettingsRoute
   '/custom-session/$sessionId': typeof CustomSessionSessionIdRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/performance'
+    | '/programs'
     | '/session'
     | '/settings'
     | '/custom-session/$sessionId'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/performance'
+    | '/programs'
     | '/session'
     | '/settings'
     | '/custom-session/$sessionId'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/performance'
+    | '/programs'
     | '/session'
     | '/settings'
     | '/custom-session/$sessionId'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   HistoryRoute: typeof HistoryRoute
   PerformanceRoute: typeof PerformanceRoute
+  ProgramsRoute: typeof ProgramsRoute
   SessionRoute: typeof SessionRoute
   SettingsRoute: typeof SettingsRoute
   CustomSessionSessionIdRoute: typeof CustomSessionSessionIdRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/session'
       fullPath: '/session'
       preLoaderRoute: typeof SessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/programs': {
+      id: '/programs'
+      path: '/programs'
+      fullPath: '/programs'
+      preLoaderRoute: typeof ProgramsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/performance': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   HistoryRoute: HistoryRoute,
   PerformanceRoute: PerformanceRoute,
+  ProgramsRoute: ProgramsRoute,
   SessionRoute: SessionRoute,
   SettingsRoute: SettingsRoute,
   CustomSessionSessionIdRoute: CustomSessionSessionIdRoute,
