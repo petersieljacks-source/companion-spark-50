@@ -164,17 +164,6 @@ function CustomHome({ prog, logs }: { prog: Program; logs: WorkoutLog[] }) {
 
       <SessionPicker prog={prog} logs={logs} />
 
-      <div className="px-4 pt-2">
-        <Link
-          to="/performance"
-          className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-4 text-center"
-        >
-          <Activity className="h-5 w-5" strokeWidth={1.6} />
-          <span className="text-[15px] font-semibold">Progress</span>
-          <span className="text-[12px] text-muted-foreground">· Stats & 1RM trends</span>
-        </Link>
-      </div>
-
 
       {exerciseRows.some((r) => r.pr) && (
         <Card className="!py-3.5">
