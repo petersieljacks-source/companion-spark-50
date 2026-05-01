@@ -352,7 +352,21 @@ export function useStore() {
     await refresh();
   }
 
-  /** Hard delete a single custom-session log (preserves PR history elsewhere). */
+  /** Unarchive a program. Does NOT activate it. */
+  async function unarchiveProgram(id: string) {
+    if (!user) return;
+    await supabase.from("programs").update({ archived: false }).eq("id", id);
+    await refresh();
+  }
+
+  /** Switch the active program. Deactivates all others; activates the chosen one.
+   *  No mutation of cycle/week/day/logs — picks up exactly where it left off. */
+  async function setActiveProgram(id: string) {
+    if (!user) return;
+    await supabase.from("programs").update({ active: false }).eq("user_id", user.id).eq("active", true);
+    await supabase.from("programs").update({ active: true, archived: false }).eq("id", id);
+    await refresh();
+  }
 
   return {
     ...state,
