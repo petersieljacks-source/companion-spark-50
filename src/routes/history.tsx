@@ -44,23 +44,26 @@ function History() {
   if (!logs.length) return <AppShell title="History"><Empty>No workouts logged yet.</Empty></AppShell>;
 
   // Group by cycle/week/day for non-restart entries; restart markers render between groups inline.
+  // Note: the same cycle/week/day can recur (e.g. across programs filtered together, or after a
+  // restart marker creates a new logical group with the same coords). Suffix the React key with the
+  // group index so React keys remain unique even when the logical key repeats.
   const reversed = [...filtered].reverse();
   const groups: { key: string; header: string | null; entries: WorkoutLog[] }[] = [];
-  let currentKey = "";
+  let currentLogicalKey = "";
   for (const log of reversed) {
-    const key =
+    const logicalKey =
       log.type === "restart"
         ? `restart-${log.id}`
         : log.type === "test"
           ? `test-${log.id}`
-          : `${log.cycle}-${log.week}-${log.day}`;
-    if (key !== currentKey) {
+          : `${log.program_id}-${log.cycle}-${log.week}-${log.day}`;
+    if (logicalKey !== currentLogicalKey) {
       let header: string | null = null;
       if (log.type !== "restart" && log.type !== "test") {
         header = `Cycle ${log.cycle} · ${WEEK_LABELS[log.week] ?? "?"} · ${DAY_LABELS[log.day] ?? `Day ${log.day + 1}`}`;
       }
-      groups.push({ key, header, entries: [log] });
-      currentKey = key;
+      groups.push({ key: `${groups.length}-${logicalKey}`, header, entries: [log] });
+      currentLogicalKey = logicalKey;
     } else {
       groups[groups.length - 1].entries.push(log);
     }
