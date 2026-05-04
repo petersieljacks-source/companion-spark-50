@@ -148,6 +148,17 @@ export function useStore() {
     await refresh();
   }
 
+  async function resetAllData() {
+    if (!user) throw new Error("Not signed in");
+    const delLogs = await supabase.from("workout_logs").delete().eq("user_id", user.id);
+    if (delLogs.error) throw delLogs.error;
+    const delProgs = await supabase.from("programs").delete().eq("user_id", user.id);
+    if (delProgs.error) throw delProgs.error;
+    const upBw = await supabase.from("user_settings").update({ bodyweight: 80 }).eq("user_id", user.id);
+    if (upBw.error) throw upBw.error;
+    setState((s) => ({ ...s, programs: [], logs: [], bodyweight: 80 }));
+  }
+
   async function upsertLog(log: Omit<WorkoutLog, "id" | "user_id">) {
     if (!user) throw new Error("Not signed in");
     // Remove any existing log for same lift in same week/day/cycle
