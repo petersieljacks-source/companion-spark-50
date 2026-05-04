@@ -21,7 +21,14 @@ export function AppShell({ children, title, back, hideTabBar }: { children: Reac
   }
 
   return (
-    <div className={hideTabBar ? "min-h-screen" : "min-h-screen pb-20"}>
+    <div
+      className={hideTabBar ? "min-h-screen" : "min-h-screen"}
+      style={
+        hideTabBar
+          ? undefined
+          : { paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }
+      }
+    >
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2.5">
         {back && (
           <button onClick={back} className="text-[13px] text-info">
