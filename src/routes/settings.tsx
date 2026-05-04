@@ -30,6 +30,8 @@ function Settings() {
   const [bwInput, setBwInput] = useState(String(bodyweight));
   const [restartOpen, setRestartOpen] = useState(false);
   const [restartTMs, setRestartTMs] = useState<number[]>([]);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Local edit buffers — keystrokes update local state; we commit on blur/Enter
   // to avoid one network write per character.
