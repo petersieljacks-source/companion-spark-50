@@ -1,8 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionLabel, LiftBadge, Empty } from "@/components/ui-bits";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useStore } from "@/lib/store";
 import { WEEK_LABELS, DAY_LABELS } from "@/lib/531";
 import { useAuth } from "@/lib/auth";
@@ -14,7 +24,8 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
-  const { activeProgram: prog, programs, logs, bodyweight, setBodyweight, updateProgram, deleteProgram, insertRestartMarker, loading } = useStore();
+  const { activeProgram: prog, programs, logs, bodyweight, setBodyweight, updateProgram, deleteProgram, insertRestartMarker, resetAllData, loading } = useStore();
+  const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const [bwInput, setBwInput] = useState(String(bodyweight));
   const [restartOpen, setRestartOpen] = useState(false);
