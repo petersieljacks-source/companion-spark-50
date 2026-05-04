@@ -402,6 +402,62 @@ function Settings() {
           Export logs (CSV)
         </button>
       </Card>
+
+      <SectionLabel>Danger zone</SectionLabel>
+      <Card>
+        <div className="mb-2.5 text-[13px] text-muted-foreground">
+          Wipe every program, every workout log, and reset body weight. Your account stays intact. This cannot be undone.
+        </div>
+        <button
+          onClick={() => setResetOpen(true)}
+          className="rounded-lg border border-destructive/40 bg-card px-3.5 py-1.5 text-[13px] font-medium text-destructive"
+        >
+          Reset all data
+        </button>
+      </Card>
+
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset all data?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div>This will permanently delete:</div>
+                <ul className="list-disc pl-5 text-muted-foreground">
+                  <li>All programs ({programs.length})</li>
+                  <li>All workout logs ({logs.length})</li>
+                  <li>Body weight (reset to 80 kg)</li>
+                </ul>
+                <div>Your account and login stay intact. This cannot be undone.</div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetting}
+              onClick={async (e) => {
+                e.preventDefault();
+                setResetting(true);
+                try {
+                  await resetAllData();
+                  setBwInput("80");
+                  setResetOpen(false);
+                  toast.success("All data cleared. Starting fresh.");
+                  navigate({ to: "/" });
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Reset failed");
+                } finally {
+                  setResetting(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {resetting ? "Resetting…" : "Yes, wipe everything"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
