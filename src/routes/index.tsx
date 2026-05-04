@@ -284,8 +284,8 @@ function RecentSessionsStrip({ prog, logs }: { prog: Program; logs: WorkoutLog[]
                 aria-label={`${c.iso}${filled ? `: ${c.sessionName}` : ": no session"}`}
               >
                 <span className="text-[9px] uppercase tracking-tight opacity-70">{dayLabel(c.date)}</span>
-                <span className="mt-0.5 truncate text-[10px] font-semibold leading-tight max-w-full px-0.5">
-                  {filled ? (c.sessionName!.length > 5 ? c.sessionName!.slice(0, 5) : c.sessionName) : (isToday ? "•" : "·")}
+                <span className="mt-0.5 text-[10px] font-semibold leading-tight px-0.5">
+                  {filled ? c.sessionName!.slice(0, 1).toUpperCase() : (isToday ? "•" : "·")}
                 </span>
               </button>
             );
