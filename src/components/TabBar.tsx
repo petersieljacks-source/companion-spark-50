@@ -11,7 +11,10 @@ const tabs = [
 export function TabBar() {
   const loc = useLocation();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-border bg-background">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-border bg-background"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       {tabs.map((t) => {
         const active =
           t.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(t.to);
@@ -20,7 +23,7 @@ export function TabBar() {
           <Link
             key={t.to}
             to={t.to}
-            className={`flex-1 flex flex-col items-center gap-1 py-2.5 pb-3 text-[11px] transition-colors ${
+            className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 py-2.5 pb-3 text-[11px] transition-colors ${
               active ? "text-foreground" : "text-muted-foreground"
             }`}
           >
