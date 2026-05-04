@@ -387,6 +387,7 @@ export function useStore() {
     updateProgram,
     editProgram,
     deleteProgram,
+    resetAllData,
     archiveProgram,
     unarchiveProgram,
     setActiveProgram,
