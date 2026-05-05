@@ -310,8 +310,10 @@ function NewProgram() {
             <Field label="Default increment (kg)">
               <input
                 type="number"
+                inputMode="decimal"
                 step={0.5}
                 value={defaultIncrement}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setDefaultIncrement(parseFloat(e.target.value) || 0)}
                 className="mt-1.5 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[15px]"
               />
@@ -346,8 +348,10 @@ function NewProgram() {
                         <span className="flex-1 text-[13px] text-muted-foreground">BW ({bodyweight} kg) + added</span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           step={2.5}
                           value={l.addedLoad ?? 0}
+                          onFocus={(e) => e.currentTarget.select()}
                           onChange={(e) => {
                             const v = parseFloat(e.target.value) || 0;
                             setMainLifts((arr) => arr.map((x, j) => j === i ? { ...x, addedLoad: v, tm: bodyweight + v } : x));
@@ -365,8 +369,10 @@ function NewProgram() {
                       <span className="flex-1 text-[13px] text-muted-foreground">Training max</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step={2.5}
                         value={l.tm}
+                        onFocus={(e) => e.currentTarget.select()}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value) || 100;
                           setMainLifts((arr) => arr.map((x, j) => j === i ? { ...x, tm: v } : x));
@@ -406,8 +412,10 @@ function NewProgram() {
                     </span>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step={2.5}
                       value={l.weight}
+                      onFocus={(e) => e.currentTarget.select()}
                       onChange={(e) => {
                         const v = parseFloat(e.target.value) || 0;
                         setSuppLifts((arr) => arr.map((x, j) => j === i ? { ...x, weight: v } : x));
@@ -431,8 +439,10 @@ function NewProgram() {
                             <span className="text-[11px] text-muted-foreground">S{s + 1}</span>
                             <input
                               type="number"
+                              inputMode="numeric"
                               min={1}
                               value={targets[s] ?? 10}
+                              onFocus={(e) => e.currentTarget.select()}
                               onChange={(e) => {
                                 const v = Math.max(1, parseInt(e.target.value) || 1);
                                 setSuppLifts((arr) => arr.map((x, j) => {
@@ -452,9 +462,11 @@ function NewProgram() {
                       <span>Load bump (when all targets hit):</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step={0.5}
                         min={0}
                         value={l.increment ?? 2.5}
+                        onFocus={(e) => e.currentTarget.select()}
                         onChange={(e) => {
                           const v = Math.max(0, parseFloat(e.target.value) || 0);
                           setSuppLifts((arr) => arr.map((x, j) => j === i ? { ...x, increment: v } : x));
