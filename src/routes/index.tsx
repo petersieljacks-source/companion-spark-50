@@ -508,6 +508,7 @@ function CycleCompleteBanner({
             <span className="text-[12px] text-muted-foreground">+</span>
             <input
               type="number"
+              onFocus={(e) => e.currentTarget.select()}
               step={1.25}
               value={bumps[i] ?? 0}
               onChange={(e) => {
