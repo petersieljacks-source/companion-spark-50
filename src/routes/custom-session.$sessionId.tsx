@@ -294,7 +294,8 @@ function CustomSessionPage() {
               />
             </Card>
           );
-        })
+        });
+        })()
       )}
 
       <div className="fixed bottom-0 left-0 right-0 z-10 flex gap-2.5 border-t border-border bg-background px-4 pb-4 pt-2.5">
