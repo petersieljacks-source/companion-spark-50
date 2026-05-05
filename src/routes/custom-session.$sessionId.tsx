@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, LiftBadge, Empty } from "@/components/ui-bits";
 import { useStore } from "@/lib/store";
 import { estimate1RM, type SetLog, type CustomExercise, type CustomSession } from "@/lib/531";
-import { applyProgression, prescribedWeight } from "@/lib/custom";
+import { applyProgression, prescribedWeight, computeSupersetLabels } from "@/lib/custom";
 
 export const Route = createFileRoute("/custom-session/$sessionId")({
   component: CustomSessionPage,
@@ -200,17 +200,25 @@ function CustomSessionPage() {
       {session.exercises.length === 0 ? (
         <Empty>No exercises in this session.</Empty>
       ) : (
-        session.exercises.map((ex) => {
+        (() => {
+          const supersetLabels = computeSupersetLabels(session.exercises);
+          return session.exercises.map((ex) => {
           const state = byEx[ex.id];
           if (!state) return null;
           const totalKg = prescribedWeight(ex, bodyweight, Number(prog.round || 2.5));
           const addedKg = ex.bodyweight ? Math.max(0, totalKg - bodyweight) : totalKg;
           const last = lastLogFor(ex);
           const pr = prFor(ex);
+          const supLabel = supersetLabels[ex.id];
           return (
             <Card key={ex.id}>
               <div className="mb-2 flex items-center justify-between">
                 <div className="font-medium">
+                  {supLabel && (
+                    <span className="mr-1.5 rounded-md border border-input bg-input-bg px-1.5 py-0.5 text-[11px] font-semibold">
+                      {supLabel}
+                    </span>
+                  )}
                   {ex.name}
                   <LiftBadge kind="custom" />
                   {ex.bodyweight && <LiftBadge kind="bw" />}
