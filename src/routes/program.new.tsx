@@ -131,13 +131,29 @@ function NewProgram() {
   function renameSession(id: string, name: string) {
     setSessions((arr) => arr.map((s) => (s.id === id ? { ...s, name } : s)));
   }
-  function addExercise(sessionId: string) {
+  function addExercise(sessionId: string, group: string | null = null) {
     setSessions((arr) =>
       arr.map((s) =>
         s.id === sessionId
-          ? { ...s, exercises: [...s.exercises, defaultExercise(defaultRule, defaultIncrement)] }
+          ? { ...s, exercises: [...s.exercises, { ...defaultExercise(defaultRule, defaultIncrement), group }] }
           : s,
       ),
+    );
+  }
+  function addSuperset(sessionId: string) {
+    setSessions((arr) =>
+      arr.map((s) => {
+        if (s.id !== sessionId) return s;
+        const letter = nextSupersetLetter(s.exercises);
+        return {
+          ...s,
+          exercises: [
+            ...s.exercises,
+            { ...defaultExercise(defaultRule, defaultIncrement), group: letter },
+            { ...defaultExercise(defaultRule, defaultIncrement), group: letter },
+          ],
+        };
+      }),
     );
   }
   function updateExercise(sessionId: string, exId: string, patch: Partial<CustomExercise>) {
