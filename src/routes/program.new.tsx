@@ -13,7 +13,7 @@ import type {
   CustomExercise,
   ProgressionRule,
 } from "@/lib/531";
-import { defaultExercise, newId } from "@/lib/custom";
+import { defaultExercise, newId, computeSupersetLabels, nextSupersetLetter } from "@/lib/custom";
 
 const searchSchema = z.object({
   edit: z.string().optional(),
@@ -696,9 +696,11 @@ function NumberField({
       <label className="text-[11px] text-muted-foreground">{label}</label>
       <input
         type="number"
+        inputMode="decimal"
         step={step}
         min={min}
         value={value}
+        onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => {
           const v = parseFloat(e.target.value);
           onChange(isFinite(v) ? v : 0);
