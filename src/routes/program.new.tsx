@@ -611,11 +611,13 @@ function NewProgram() {
 function ExerciseEditor({
   exercise,
   bodyweight,
+  label,
   onChange,
   onRemove,
 }: {
   exercise: CustomExercise;
   bodyweight: number;
+  label?: string | null;
   onChange: (patch: Partial<CustomExercise>) => void;
   onRemove: () => void;
 }) {
@@ -623,6 +625,11 @@ function ExerciseEditor({
   return (
     <div className="rounded-lg border border-border bg-secondary px-3 py-2.5">
       <div className="flex items-center gap-2">
+        {label && (
+          <span className="rounded-md border border-input bg-input-bg px-1.5 py-0.5 text-[11px] font-semibold text-foreground">
+            {label}
+          </span>
+        )}
         <input
           type="text"
           value={exercise.name}
@@ -630,6 +637,19 @@ function ExerciseEditor({
           placeholder="e.g. Bench press"
           className="flex-1 rounded-lg border border-input bg-input-bg px-2.5 py-1.5 text-[14px]"
         />
+        <select
+          value={exercise.group ?? ""}
+          onChange={(e) => onChange({ group: e.target.value || null })}
+          aria-label="Superset group"
+          className="rounded-lg border border-input bg-input-bg px-1.5 py-1.5 text-[12px]"
+        >
+          <option value="">–</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+          <option value="E">E</option>
+        </select>
         <label className="flex items-center gap-1 whitespace-nowrap text-[11px] text-muted-foreground">
           <input
             type="checkbox"
