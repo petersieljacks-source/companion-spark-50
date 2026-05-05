@@ -559,22 +559,34 @@ function NewProgram() {
                 {s.exercises.length === 0 && (
                   <div className="py-1 text-[12px] text-muted-foreground">No exercises yet.</div>
                 )}
-                {s.exercises.map((ex) => (
-                  <ExerciseEditor
-                    key={ex.id}
-                    exercise={ex}
-                    bodyweight={bodyweight}
-                    onChange={(patch) => updateExercise(s.id, ex.id, patch)}
-                    onRemove={() => removeExercise(s.id, ex.id)}
-                  />
-                ))}
+                {(() => {
+                  const labels = computeSupersetLabels(s.exercises);
+                  return s.exercises.map((ex) => (
+                    <ExerciseEditor
+                      key={ex.id}
+                      exercise={ex}
+                      bodyweight={bodyweight}
+                      label={labels[ex.id]}
+                      onChange={(patch) => updateExercise(s.id, ex.id, patch)}
+                      onRemove={() => removeExercise(s.id, ex.id)}
+                    />
+                  ));
+                })()}
               </div>
-              <button
-                onClick={() => addExercise(s.id)}
-                className="mt-2 rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
-              >
-                + Add exercise
-              </button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  onClick={() => addExercise(s.id)}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  + Add exercise
+                </button>
+                <button
+                  onClick={() => addSuperset(s.id)}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  + New superset
+                </button>
+              </div>
             </div>
           ))}
           <button
