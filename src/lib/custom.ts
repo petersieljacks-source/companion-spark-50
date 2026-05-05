@@ -26,7 +26,45 @@ export function defaultExercise(rule: ProgressionRule, increment: number): Custo
     increment,
     amrap_last: false,
     note: null,
+    group: null,
   };
+}
+
+/**
+ * Compute display labels (e.g. "A1", "A2", "B1") for exercises within a session.
+ * Returns a map of exerciseId -> label (or null when the exercise is standalone).
+ * Numbering restarts whenever the consecutive run of a group ends.
+ */
+export function computeSupersetLabels(exercises: CustomExercise[]): Record<string, string | null> {
+  const out: Record<string, string | null> = {};
+  let lastGroup: string | null = null;
+  let counter = 0;
+  for (const ex of exercises) {
+    const g = ex.group || null;
+    if (!g) {
+      out[ex.id] = null;
+      lastGroup = null;
+      counter = 0;
+      continue;
+    }
+    if (g === lastGroup) {
+      counter += 1;
+    } else {
+      lastGroup = g;
+      counter = 1;
+    }
+    out[ex.id] = `${g}${counter}`;
+  }
+  return out;
+}
+
+/** Find the next unused superset letter in a session (A, B, C...). */
+export function nextSupersetLetter(exercises: CustomExercise[]): string {
+  const used = new Set(exercises.map((e) => e.group).filter(Boolean) as string[]);
+  for (const c of "ABCDEFGHIJ") {
+    if (!used.has(c)) return c;
+  }
+  return "A";
 }
 
 function roundTo(value: number, step: number): number {

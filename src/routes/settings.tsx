@@ -170,6 +170,7 @@ function Settings() {
         <div className="flex items-center gap-2">
           <input
             type="number"
+            onFocus={(e) => e.currentTarget.select()}
             inputMode="decimal"
             min={30}
             step={0.5}
@@ -210,6 +211,7 @@ function Settings() {
                           <span className="text-[12px] text-muted-foreground">+</span>
                           <input
                             type="number"
+                            onFocus={(e) => e.currentTarget.select()}
                             inputMode="decimal"
                             step={2.5}
                             value={displayed}
@@ -229,6 +231,7 @@ function Settings() {
                         <div className="flex-1 text-sm">{l.name}</div>
                         <input
                           type="number"
+                          onFocus={(e) => e.currentTarget.select()}
                           inputMode="decimal"
                           step={2.5}
                           value={displayed}
@@ -275,6 +278,7 @@ function Settings() {
                       {l.bodyweight && <span className="text-[12px] text-muted-foreground">+</span>}
                       <input
                         type="number"
+                        onFocus={(e) => e.currentTarget.select()}
                         inputMode="decimal"
                         step={2.5}
                         value={displayed}
@@ -298,6 +302,7 @@ function Settings() {
                             <span className="text-[11px] text-muted-foreground">S{s + 1}</span>
                             <input
                               type="number"
+                              onFocus={(e) => e.currentTarget.select()}
                               min={1}
                               defaultValue={targets[s] ?? 10}
                               onBlur={(e) => {
@@ -314,6 +319,7 @@ function Settings() {
                         <span>Load bump (when all hit):</span>
                         <input
                           type="number"
+                          onFocus={(e) => e.currentTarget.select()}
                           step={0.5}
                           min={0}
                           defaultValue={l.increment ?? 2.5}
@@ -351,6 +357,7 @@ function Settings() {
                     <div className="flex-1 text-sm">{l.name}</div>
                     <input
                       type="number"
+                      onFocus={(e) => e.currentTarget.select()}
                       inputMode="decimal"
                       step={2.5}
                       value={restartTMs[i] ?? l.tm}

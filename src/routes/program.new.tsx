@@ -13,7 +13,7 @@ import type {
   CustomExercise,
   ProgressionRule,
 } from "@/lib/531";
-import { defaultExercise, newId } from "@/lib/custom";
+import { defaultExercise, newId, computeSupersetLabels, nextSupersetLetter } from "@/lib/custom";
 
 const searchSchema = z.object({
   edit: z.string().optional(),
@@ -131,13 +131,29 @@ function NewProgram() {
   function renameSession(id: string, name: string) {
     setSessions((arr) => arr.map((s) => (s.id === id ? { ...s, name } : s)));
   }
-  function addExercise(sessionId: string) {
+  function addExercise(sessionId: string, group: string | null = null) {
     setSessions((arr) =>
       arr.map((s) =>
         s.id === sessionId
-          ? { ...s, exercises: [...s.exercises, defaultExercise(defaultRule, defaultIncrement)] }
+          ? { ...s, exercises: [...s.exercises, { ...defaultExercise(defaultRule, defaultIncrement), group }] }
           : s,
       ),
+    );
+  }
+  function addSuperset(sessionId: string) {
+    setSessions((arr) =>
+      arr.map((s) => {
+        if (s.id !== sessionId) return s;
+        const letter = nextSupersetLetter(s.exercises);
+        return {
+          ...s,
+          exercises: [
+            ...s.exercises,
+            { ...defaultExercise(defaultRule, defaultIncrement), group: letter },
+            { ...defaultExercise(defaultRule, defaultIncrement), group: letter },
+          ],
+        };
+      }),
     );
   }
   function updateExercise(sessionId: string, exId: string, patch: Partial<CustomExercise>) {
@@ -310,8 +326,10 @@ function NewProgram() {
             <Field label="Default increment (kg)">
               <input
                 type="number"
+                inputMode="decimal"
                 step={0.5}
                 value={defaultIncrement}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setDefaultIncrement(parseFloat(e.target.value) || 0)}
                 className="mt-1.5 w-full rounded-lg border border-input bg-input-bg px-3 py-2 text-[15px]"
               />
@@ -346,8 +364,10 @@ function NewProgram() {
                         <span className="flex-1 text-[13px] text-muted-foreground">BW ({bodyweight} kg) + added</span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           step={2.5}
                           value={l.addedLoad ?? 0}
+                          onFocus={(e) => e.currentTarget.select()}
                           onChange={(e) => {
                             const v = parseFloat(e.target.value) || 0;
                             setMainLifts((arr) => arr.map((x, j) => j === i ? { ...x, addedLoad: v, tm: bodyweight + v } : x));
@@ -365,8 +385,10 @@ function NewProgram() {
                       <span className="flex-1 text-[13px] text-muted-foreground">Training max</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step={2.5}
                         value={l.tm}
+                        onFocus={(e) => e.currentTarget.select()}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value) || 100;
                           setMainLifts((arr) => arr.map((x, j) => j === i ? { ...x, tm: v } : x));
@@ -406,8 +428,10 @@ function NewProgram() {
                     </span>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step={2.5}
                       value={l.weight}
+                      onFocus={(e) => e.currentTarget.select()}
                       onChange={(e) => {
                         const v = parseFloat(e.target.value) || 0;
                         setSuppLifts((arr) => arr.map((x, j) => j === i ? { ...x, weight: v } : x));
@@ -431,8 +455,10 @@ function NewProgram() {
                             <span className="text-[11px] text-muted-foreground">S{s + 1}</span>
                             <input
                               type="number"
+                              inputMode="numeric"
                               min={1}
                               value={targets[s] ?? 10}
+                              onFocus={(e) => e.currentTarget.select()}
                               onChange={(e) => {
                                 const v = Math.max(1, parseInt(e.target.value) || 1);
                                 setSuppLifts((arr) => arr.map((x, j) => {
@@ -452,9 +478,11 @@ function NewProgram() {
                       <span>Load bump (when all targets hit):</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step={0.5}
                         min={0}
                         value={l.increment ?? 2.5}
+                        onFocus={(e) => e.currentTarget.select()}
                         onChange={(e) => {
                           const v = Math.max(0, parseFloat(e.target.value) || 0);
                           setSuppLifts((arr) => arr.map((x, j) => j === i ? { ...x, increment: v } : x));
@@ -531,22 +559,34 @@ function NewProgram() {
                 {s.exercises.length === 0 && (
                   <div className="py-1 text-[12px] text-muted-foreground">No exercises yet.</div>
                 )}
-                {s.exercises.map((ex) => (
-                  <ExerciseEditor
-                    key={ex.id}
-                    exercise={ex}
-                    bodyweight={bodyweight}
-                    onChange={(patch) => updateExercise(s.id, ex.id, patch)}
-                    onRemove={() => removeExercise(s.id, ex.id)}
-                  />
-                ))}
+                {(() => {
+                  const labels = computeSupersetLabels(s.exercises);
+                  return s.exercises.map((ex) => (
+                    <ExerciseEditor
+                      key={ex.id}
+                      exercise={ex}
+                      bodyweight={bodyweight}
+                      label={labels[ex.id]}
+                      onChange={(patch) => updateExercise(s.id, ex.id, patch)}
+                      onRemove={() => removeExercise(s.id, ex.id)}
+                    />
+                  ));
+                })()}
               </div>
-              <button
-                onClick={() => addExercise(s.id)}
-                className="mt-2 rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
-              >
-                + Add exercise
-              </button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  onClick={() => addExercise(s.id)}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  + Add exercise
+                </button>
+                <button
+                  onClick={() => addSuperset(s.id)}
+                  className="rounded-lg border border-input bg-card px-3 py-1.5 text-[12px] font-medium"
+                >
+                  + New superset
+                </button>
+              </div>
             </div>
           ))}
           <button
@@ -571,11 +611,13 @@ function NewProgram() {
 function ExerciseEditor({
   exercise,
   bodyweight,
+  label,
   onChange,
   onRemove,
 }: {
   exercise: CustomExercise;
   bodyweight: number;
+  label?: string | null;
   onChange: (patch: Partial<CustomExercise>) => void;
   onRemove: () => void;
 }) {
@@ -583,6 +625,11 @@ function ExerciseEditor({
   return (
     <div className="rounded-lg border border-border bg-secondary px-3 py-2.5">
       <div className="flex items-center gap-2">
+        {label && (
+          <span className="rounded-md border border-input bg-input-bg px-1.5 py-0.5 text-[11px] font-semibold text-foreground">
+            {label}
+          </span>
+        )}
         <input
           type="text"
           value={exercise.name}
@@ -590,6 +637,19 @@ function ExerciseEditor({
           placeholder="e.g. Bench press"
           className="flex-1 rounded-lg border border-input bg-input-bg px-2.5 py-1.5 text-[14px]"
         />
+        <select
+          value={exercise.group ?? ""}
+          onChange={(e) => onChange({ group: e.target.value || null })}
+          aria-label="Superset group"
+          className="rounded-lg border border-input bg-input-bg px-1.5 py-1.5 text-[12px]"
+        >
+          <option value="">–</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+          <option value="E">E</option>
+        </select>
         <label className="flex items-center gap-1 whitespace-nowrap text-[11px] text-muted-foreground">
           <input
             type="checkbox"
@@ -696,9 +756,11 @@ function NumberField({
       <label className="text-[11px] text-muted-foreground">{label}</label>
       <input
         type="number"
+        inputMode="decimal"
         step={step}
         min={min}
         value={value}
+        onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => {
           const v = parseFloat(e.target.value);
           onChange(isFinite(v) ? v : 0);

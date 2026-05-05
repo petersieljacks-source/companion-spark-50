@@ -546,6 +546,7 @@ function WorkoutPage() {
             </div>
             <input
               type="number"
+              onFocus={(e) => e.currentTarget.select()}
               min={1}
               autoFocus
               defaultValue={(suppLift.rep_targets ?? [10, 10, 10])[editingTargetIdx] ?? 10}

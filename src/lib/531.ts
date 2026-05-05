@@ -61,6 +61,8 @@ export type CustomExercise = {
   increment: number;
   amrap_last: boolean;
   note?: string | null;
+  /** Superset group letter, e.g. "A", "B". null/undefined = standalone. */
+  group?: string | null;
 };
 
 export type CustomSession = {

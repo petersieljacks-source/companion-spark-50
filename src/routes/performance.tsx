@@ -358,6 +358,7 @@ function ManualTestForm({
           Weight (kg) *
           <input
             type="number"
+            onFocus={(e) => e.currentTarget.select()}
             inputMode="decimal"
             step="0.5"
             min="0"
@@ -371,6 +372,7 @@ function ManualTestForm({
           Reps *
           <input
             type="number"
+            onFocus={(e) => e.currentTarget.select()}
             inputMode="numeric"
             step="1"
             min="1"
@@ -384,6 +386,7 @@ function ManualTestForm({
           Result — 1RM (kg) *
           <input
             type="number"
+            onFocus={(e) => e.currentTarget.select()}
             inputMode="decimal"
             step="0.5"
             min="0"
